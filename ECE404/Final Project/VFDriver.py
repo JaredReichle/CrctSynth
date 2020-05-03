@@ -1,41 +1,44 @@
-def VFDriver(bigH, s, poles, opts):
+import numpy as np
+from numpy import log10, ceil, floor
+from math import sqrt, pi
+import vectfit3
 
-    import numpy as np
-    from numpy import log10, ceil, floor
-    from math import sqrt, pi
-    import vectfit3
-    
-    class defa():
-        N = []
-        poletype = 'lincmplx'
-        nu = 1e-3
-        Niter1 = 4
-        Niter2 = 4
-        weight = []
-        weightparam = 1
-        asymp = 2
-        stable = 1
-        relaxed = 1
-        plot = 1
-        logx = 1
-        logy = 1
-        errplot = 1
-        phaseplot = 1
-        screen = 1
-        cmplx_ss = 1
-        remove_HFpoles = 0
-        factor_HF = 1.1
-        passive_DE = 0
-        passive_DE_TOLD = 1e-6
-        passive_DE_TOLE = 1e-16
-    
+class DefVFOpts():
+    N = None
+    poletype = 'lincmplx'
+    nu = 1e-3
+    Niter1 = 4
+    Niter2 = 4
+    weight = []
+    weightparam = 1
+    asymp = 2
+    stable = 1
+    relaxed = 1
+    plot = 1
+    logx = 1
+    logy = 1
+    errplot = 1
+    phaseplot = 1
+    screen = 1
+    cmplx_ss = 1
+    remove_HFpoles = 0
+    factor_HF = 1.1
+    passive_DE = 0
+    passive_DE_TOLD = 1e-6
+    passive_DE_TOLE = 1e-16
+
+
+
+def VFDriver(bigH, s, poles, opts):
+    '''
     A = fieldnames(defa)
     for m in range(0,len(A)):
         if isfield(opts,A[m]) != bool(true):
             dum = char(A[m])
             dum2 = getfield(defa,dum)
             opts = setfield(opts,dum,dum2)
-    
+    '''
+    '''
     VF.asymp = opts.asymp
     if opts.stable == 1:
         VF.stable = 1
@@ -69,7 +72,7 @@ def VFDriver(bigH, s, poles, opts):
         VF.complx_ss = 1
     else:
         VF.complx_ss = 0
-        
+    '''
     Niter1 = opts.Niter1
     Niter2 = opts.Niter2
     weightparam = opts.weightparam
@@ -84,8 +87,10 @@ def VFDriver(bigH, s, poles, opts):
     fit3 = []
     Ns = len(s)
     
-    if isempty(poles):
-        if isempty(opts.N):
+    #if isempty(poles):
+    if poles.size == 0:
+        #if isempty(opts.N):
+        if opts.N == 0:
             print('===> ERROR: You did not specify a value for opts.N (fitting order).')
             print('Solution: either specify value for opts.N, or provide initial poles in array poles.')
             return
