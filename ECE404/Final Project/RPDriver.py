@@ -1,25 +1,26 @@
+class DefRPOpts():
+    parametertype = 'Y'
+    Niter_out = 10
+    Niter_in = 0
+    TOLGD = 1e-6
+    TOLE = 1e-12
+    cmplx_ss = 1
+    weightfactor = 0.001
+    weightparam = 1
+    method = 'FRP'
+    colinterch = 1
+    outputlevel = 1
+    weight = []
+
 def RPDriver(SER, s, opts):
     MPopts.auxflag = 1
     MPopts.solver = 'QUADPROG'
-    
+ 
     [SER] = pr2ss(SER)  #Convert model from pole-residue to state-space
-    
+
     print('================== START ==================')
-    
-    class opts():
-        parametertype = 'Y'
-        Niter_out = 10
-        Niter_in = 0
-        TOLGD = 1e-6
-        TOLE = 1e-12
-        cmplx_ss = 1
-        weightfactor = 0.001
-        weightparam = 1
-        method = 'FRP'
-        colinterch = 1
-        outputlevel = 1
-        weight = []
-        
+  
+    '''        
     if opts.method == 'FMP' and opts.parametertype == 'S':
         print('ERROR in RPDriver: FMP cannot be used together with S-parameters')
         return
@@ -75,7 +76,4 @@ def RPDriver(SER, s, opts):
             s2 = []
             SERflag = 1
             if outputlevel == 1:
-                
-    
-    
-    
+   '''
