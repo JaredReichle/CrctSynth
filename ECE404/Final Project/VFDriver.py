@@ -3,8 +3,10 @@ from numpy import log10, ceil, floor
 from math import sqrt, pi
 import vectfit3
 
+#THIS IS A TEST COMMENT
+
 class DefVFOpts():
-    N = None
+    N = 0
     poletype = 'lincmplx'
     nu = 1e-3
     Niter1 = 4
@@ -26,7 +28,6 @@ class DefVFOpts():
     passive_DE = 0
     passive_DE_TOLD = 1e-6
     passive_DE_TOLE = 1e-16
-
 
 
 def VFDriver(bigH, s, poles, opts):

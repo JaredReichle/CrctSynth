@@ -27,8 +27,10 @@ from pylab import  outer, sort, ones, diag
 import numpy as np
 from matplotlib import pyplot as plt
 
-import VFDriver
-import RPDriver
+from VFDriver import VFDriver, DefVFOpts
+from RPDriver import RPDriver, DefRPOpts
+
+#TEST COMMENT #2
 
 #==============================
 #   POLE-RESIDUE FITTING
