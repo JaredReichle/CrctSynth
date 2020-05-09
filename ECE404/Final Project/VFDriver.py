@@ -1,12 +1,11 @@
 import numpy as np
 from numpy import log10, ceil, floor
-from math import sqrt, pi
+from math import sqrt
 import vectfit3
-
-#THIS IS A TEST COMMENT
+import numpy.linalg as lin
 
 class DefVFOpts():
-    N = 0
+    N = 10
     poletype = 'lincmplx'
     nu = 1e-3
     Niter1 = 4
@@ -30,50 +29,9 @@ class DefVFOpts():
     passive_DE_TOLE = 1e-16
 
 
+
 def VFDriver(bigH, s, poles, opts):
-    '''
-    A = fieldnames(defa)
-    for m in range(0,len(A)):
-        if isfield(opts,A[m]) != bool(true):
-            dum = char(A[m])
-            dum2 = getfield(defa,dum)
-            opts = setfield(opts,dum,dum2)
-    '''
-    '''
-    VF.asymp = opts.asymp
-    if opts.stable == 1:
-        VF.stable = 1
-    else:
-        VF.stable = 0
-    if opts.relaxed == 1:
-        VF.relax = 1
-    else:
-        VF.relax = 0
-    if opts.plot == 1:
-        VF.spy2 = 1
-    else:
-        VF.spy2 = 0
-    if opts.logx == 1:
-        VF.logx = 1
-    else:
-        VF.logx = 0
-    if opts.logy == 1:
-        VF.logy = 1
-    else:
-        VF.logy = 0
-    if opts.errplot == 1:
-        VF.errplot = 1
-    else:
-        VF.errplot = 0
-    if opts.phaseplot == 1:
-        VF.phaseplot = 1
-    else:
-        VF.phaseplot = 0
-    if opts.cmplx_ss == 1:
-        VF.complx_ss = 1
-    else:
-        VF.complx_ss = 0
-    '''
+    
     Niter1 = opts.Niter1
     Niter2 = opts.Niter2
     weightparam = opts.weightparam
@@ -86,11 +44,9 @@ def VFDriver(bigH, s, poles, opts):
     fit1 = []
     fit2 = []
     fit3 = []
-    Ns = len(s)
+    Ns = len(s[0])-1
     
-    #if isempty(poles):
-    if poles.size == 0:
-        #if isempty(opts.N):
+    if len(poles) == 0:
         if opts.N == 0:
             print('===> ERROR: You did not specify a value for opts.N (fitting order).')
             print('Solution: either specify value for opts.N, or provide initial poles in array poles.')
@@ -98,12 +54,12 @@ def VFDriver(bigH, s, poles, opts):
         N = opts.N
         oldpoletype = opts.poletype
         if N < 6:
-            if strcmp(opts.poletype, 'linlogcmplx'):
+            if opts.poletype == 'linlogcmplx':
                 opts.poletype = 'logcmplx'
         nu = opts.nu
         if len(opts.poletype) == 8:
             if opts.poletype == 'lincmplx': #Complex, linearly spaced starting poles
-                bet = np.linspace(s[0]/1j,s[Ns]/1j,floor(N/2))
+                bet = np.linspace(s[0,0]/1j,s[0,Ns]/1j,floor(N/2))
                 poles = []
                 for n in range (0,len(bet)):
                     alf = -nu*bet[n]
@@ -123,14 +79,14 @@ def VFDriver(bigH, s, poles, opts):
             
         elif len(opts.poletype) == 11:
             if opts.poletype == 'linlogcmplx':
-                bet = np.linspace(s[0]/1j, s[Ns]/1j, ceil((N-1)/4))
+                bet = np.linspace(s[0,0]/1j, s[0,Ns]/1j, ceil((N-1)/4))
                 poles1 = []
                 for n in range(0,len(bet)):
                     alf = -nu*bet[n]
                     poles1 = [poles1, (alf-1j*bet[n]), (alf+1j*bet[n])]
-                bet = np.logspace(log10(s[0]/1j), log10(s[Ns]/1j), 2+floor(N/4))
-                bet[0] = []
-                bet[-1] = []
+                bet = np.logspace(log10(s[0,0]/1j), log10(s[0,Ns]/1j), 2+floor(N/4))
+                bet[0] = 0
+                bet[-1] = 0
                 poles2 = []
                 for n in range(0,len(bet)):
                     alf = -nu*bet[n]
@@ -145,9 +101,9 @@ def VFDriver(bigH, s, poles, opts):
                 return
         
         if len(poles) < N:
-            if strcmp(opts.poletype, 'lincmplx'):
+            if opts.poletype == 'lincmplx':
                 pole_extra = -(s[0]/1j+s[-1]/1j)/2
-            elif strcmp(opts.poletype, 'logcmplx') or strcmp(opts.poletype,'linlogcmplx'):
+            elif opts.poletype == 'logcmplx' or opts.poletype == 'linlogcmplx':
                 pole_extra = -10**((log10(s[0]/1j)+log10(s[-1]/1j))/2)
             poles = [poles, pole_extra]
         
@@ -155,6 +111,8 @@ def VFDriver(bigH, s, poles, opts):
         
     Nc = len(bigH[:,0,0])
     Ns = len(s)
+    
+    f = np.zeros([Nc,1])
     
     if opts.screen == 1:
         print('==================== START ====================')
@@ -167,13 +125,13 @@ def VFDriver(bigH, s, poles, opts):
     nnn = tell
     
     #Fitting options
-    VF.spy1 = 0
-    VF.skip_pole = 0
-    VF.skip_res = 1
-    VF.legend = 1
+    DefVFOpts.spy1 = 0
+    DefVFOpts.skip_pole = 0
+    DefVFOpts.skip_res = 1
+    DefVFOpts.legend = 1
     
-    oldspy2 = VF.spy2
-    VF.spy2 = 0
+    oldspy2 = DefVFOpts.spy2
+    DefVFOpts.spy2 = 0
     if Nc == 1:
         f_sum = f
     if Nc > 1:  #For the multi terminal case
@@ -186,12 +144,12 @@ def VFDriver(bigH, s, poles, opts):
                 if weightparam == 1 or weightparam == 4 or weightparam == 5:
                     f_sum = f_sum+f[tell,:]
                 elif weightparam == 2:
-                    f_sum = f_sum + f[tell,:]/norm(f[tell,:])
+                    f_sum = f_sum + f[tell,:]/lin.norm(f[tell,:])
                 elif weightparam == 3:
-                    f_sum = f_sum + f[tell,:]/sqrt(norm(f[n,:]))
+                    f_sum = f_sum + f[tell,:]/sqrt(lin.norm(f[n,:]))
     
     #Creating LS weight
-    if isempty(opts.weight): #Automatic specification of weight
+    if opts.weight == 0: #Automatic specification of weight
         if weightparam == 1: #1 for all elements in LS problem
             weight = np.ones(Ns)
             weight_sum = np.ones(Ns)
@@ -203,11 +161,11 @@ def VFDriver(bigH, s, poles, opts):
             weight_sum = 1/sqrt(abs(f_sum))
         elif weightparam == 4: #Common weighting for all matrix elements
             for k in range(0,Ns):
-                weight[k] = 1/norm(f[:,k])
+                weight[k] = 1/lin.norm(f[:,k])
             weight_sum = weight
         elif weightparam == 5: #Common weighting for all mamtrix elements
             for k in range(0,Ns):
-                weight[k] = 1/sqrt(norm(f[:,k]))
+                weight[k] = 1/sqrt(lin.norm(f[:,k]))
             weight_sum = weight
         else:
             print('ERROR in mtrxVectfit: Illegal value for opts.weight')
@@ -226,21 +184,21 @@ def VFDriver(bigH, s, poles, opts):
             print('****Calculating improved initial poles by fitting column sum ...')
         for itr in range(0,Niter1):
             if opts.screen == 1:
-                print('Iter ', num2str(itr))
-            [SER,poles,rmserr,fit] = vectfit3(f_sum,s,poles,weight_sum,VF)
+                print('Iter ', str(itr))
+            [SER,poles,rmserr,fit] = vectfit3(f_sum,s,poles,weight_sum,DefVFOpts)
     if opts.screen == 1:
         print('****Fitting column ...')
-    VF.skip_res = 1
+    DefVFOpts.skip_res = 1
     for itr in range(0,Niter2):
         if opts.screen == 1:
-            print('Iter ', num2str(itr))
+            print('Iter ', str(itr))
         if itr == Niter2:
-            VF.skip_res = 0
-        [SER,poles,rmserr,fit1] = vectfit3(f,s,poles,weight,VF)
+            DefVFOpts.skip_res = 0
+        [SER,poles,rmserr,fit1] = vectfit3(f,s,poles,weight,DefVFOpts)
     if Niter2 == 0:
-        VF.skip_res = 0
-        VF.skip_pole = 1
-        [SER,poles,rmserr,fit1] = vectfit3(f,s,poles,weight,VF)
+        DefVFOpts.skip_res = 0
+        DefVFOpts.skip_pole = 1
+        [SER,poles,rmserr,fit1] = vectfit3(f,s,poles,weight,DefVFOpts)
     
     #========================================
     #   Throwing out high frequency poles
@@ -248,21 +206,21 @@ def VFDriver(bigH, s, poles, opts):
     if remove_HFpoles == 1:
         if opts.screen == 1:
             print('****Throwing out high frequency poles: ...')
-        ind = find(abs(poles)>factor_HF*abs(s[-1]))
+        ind = np.where(abs(poles)>factor_HF*abs(s[-1]))
         poles[ind] = []
         N = len(poles)
         if opts.screen == 1:
             print('****Refitting residues: ...')
-        VF.skip_pole = 1
-        [SER,poles,rmserr,fit2] = vectfit3(fit1,s,poles,weight,VF)
+        DefVFOpts.skip_pole = 1
+        [SER,poles,rmserr,fit2] = vectfit3(fit1,s,poles,weight,DefVFOpts)
     #=========================================
     
     #=========================================
-    if passive_DE == 1 and VF.asymp > 1:
+    if passive_DE == 1 and DefVFOpts.asymp > 1:
         if opts.screen == 1:
-            if VF.asymp == 2:
+            if DefVFOpts.asymp == 2:
                 print('****Enforcing positive realness for D...')
-            elif VF.asymp == 3:
+            elif DefVFOpts.asymp == 3:
                 print('****Enforcing positive realness for D, E...')
         tell = 0
         DD = np.zeros(Nc)
@@ -273,12 +231,12 @@ def VFDriver(bigH, s, poles, opts):
                 DD[row,col] = SER.D[tell]
                 EE[row,col] = SER.E[tell]
         #Calculating Dmod, Emod:
-        [V,L] = la.eig(DD)
+        [V,L] = lin.eig(DD)
         for n in range(0,Nc):
             if L[n,n] < 0:
                 L[n,n] = passive_DE_TOLD
         DD = V*L*V**-1
-        [V,L] = la.eig(EE)
+        [V,L] = lin.eig(EE)
         for n in range(0,Nc):
             if L[n,n] < 0:
                 L[n,n] = passive_DE_TOLE
@@ -287,6 +245,7 @@ def VFDriver(bigH, s, poles, opts):
         #Calculating fmod
         Emod = np.zeros(Nc)
         Dmod = np.zeros(Nc)
+        fmod = np.zeros(Nc)
         for col in range (0,Nc):
             for row in range(col,Nc):
                 tell = tell + 1
@@ -294,14 +253,14 @@ def VFDriver(bigH, s, poles, opts):
                 Emod[tell] = EE[row,col]
                 fmod[tell,:] = fit2[tell,:] - Dmod[tell] - s*Emod[tell]
         if opts.screen == 1:
-            if VF.asymp == 2:
+            if DefVFOpts.asymp == 2:
                 print('****Refitting C while enforcing D=0...')
-            elif VF.asymp == 3:
+            elif DefVFOpts.asymp == 3:
                 print('****Refitting C while enforcing D=0, E=0...')
-        VF.skip_pole = 0
-        VF.asymp = 1
+        DefVFOpts.skip_pole = 0
+        DefVFOpts.asymp = 1
         for itr in range(0,0):
-            [SER,poles,rmserr,fit3]=vectfit3(fmod,s,poles,weight,VF)
+            [SER,poles,rmserr,fit3]=vectfit3(fmod,s,poles,weight,DefVFOpts)
         SER.D = Dmod
         SER.E = Emod
         for tell in range(0,len(fit3[:,0])):
@@ -310,30 +269,32 @@ def VFDriver(bigH, s, poles, opts):
     if Nc > 1:
         if opts.screen == 1:
             print('****Transforming model of lower matrix triangle into state-space model of full matrix...')
-        [SER] = tri2full(SER) #FIND PYTHON ROUTINE
+        [SER] = tri2full(SER)
     
     if opts.screen == 1:
         print('****Generating pole-residue model...')
-    [R,a] == ss2pr(SER.A,SER.B,SER.C) #FIND PYTHON ROUTINE
+    R = []
+    a = []
+    [R,a] == ss2pr(SER.A,SER.B,SER.C)
     SER.R = R
     SER.poles = a
     
     #rmserror of fitting:
-    if isempty(fit3) == 0:
+    if fit3.size == 0:
         fit = fit3
-    elif isempty(fit2) == 0:
+    elif fit2.size == 0:
         fit = fit2
-    elif isempty(fit1) == 0:
+    elif fit1.size == 0:
         fit = fit1
     diff = fit - f
     rmserr = sqrt(sum(sum(abs(diff**2))))/sqrt(nnn*Ns)
     
-    VF.spy2 = oldspy2
-    if VF.spy2 == 1:
+    DefVFOpts.spy2 = oldspy2
+    if DefVFOpts.spy2 == 1:
         if opts.screen == 1:
             print('****Plotting of results')
         
-        freq = s/(s*pi*1j)
+        #freq = s/(s*pi*1j)
             
         ###PLOTTING, REVISIT
     
@@ -345,12 +306,15 @@ def VFDriver(bigH, s, poles, opts):
     for row in range(0,Nc):
         for col in range(row,Nc):
             tell = tell + 1
-            bighfit[row,col,:] = fit[tell,:]
+            bigHfit[row,col,:] = fit[tell,:]
             if row != col:
                 bigHfit[col,row,:] = fit[tell,:]
     
     return SER, rmserr, bigHfit, opts
     
+
+#==================================================
+
 def tri2full(SER):
     
     import scipy.linalg as lin
@@ -372,6 +336,9 @@ def tri2full(SER):
     CC = np.zeros([Nc,Nc*N])
     AA = []
     BB = []
+    CC = []
+    DD = []
+    EE = []
     for col in range(0,Nc):
         AA = lin.block_diag(AA,A)
         BB = lin.block_diag(BB,B)
@@ -384,13 +351,16 @@ def tri2full(SER):
     DD = DD + np.transpose(DD-lin.diag(lin.diag(DD)))
     EE = EE + np.transpose(EE-lin.diag(lin.diag(DD)))
     
-    SER2.A = AA
-    SER2.B = BB
-    SER2.C = CC
-    SER2.D = DD
-    SER2.E = EE
+    SER.A = AA
+    SER.B = BB
+    SER.C = CC
+    SER.D = DD
+    SER.E = EE
     
-    return SER2
+    return SER
+
+
+#============================================================
 
 def ss2pr(A,B,C):
     
@@ -399,7 +369,7 @@ def ss2pr(A,B,C):
     
     #Converting real-only state-space model into complex model
     if max(max(abs(A-lin.diag(lin.diag(A))))) != 0:
-        errflag = 0
+        #errflag = 0
         for m in range(0,len(A)-1):
             if A[m,m+1] != 0:
                 A[m,m] = A[m,m] +1j*A[m,m+1]

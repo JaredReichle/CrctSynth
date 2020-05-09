@@ -1,6 +1,10 @@
 import numpy as np
 
 def intercheig(V,oldV,D,Nc,fstep):
+    dot = []
+    ind = []
+    taken = []
+    hjelp = []
     if fstep > 1:
         UGH = abs(np.real(np.transpose(oldV)*V))
         for ii in range(0,Nc):

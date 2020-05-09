@@ -7,8 +7,12 @@ def rot(S):
     SB=SA
     scale1 = np.zeros([1,Nc])
     scale2 = scale1
+    scale = scale1
     err1 = scale1
     err2 = scale1
+    numerator = []
+    denominator = []
+    ang = []
     
     for col in range(0,Nc):
         numerator[col] = 0.0

@@ -4,6 +4,7 @@ def fitcalcPRE(s,SERA,SERC,SERD,SERE):
     Ns = len(s)
     Nc = len(SERD)
     N = len(SERA)
+    Y = np.zeros([Nc,Nc])
     Yfit = np.zeros([Nc,Nc,Ns])
     for k in range(0,Ns):
         tell = -1

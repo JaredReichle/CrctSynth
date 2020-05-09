@@ -22,42 +22,55 @@ Credit also goes to the following papers:
 """
 
 from math import pi
-from pylab import zeros, vstack, concatenate, real, imag
-from pylab import  outer, sort, ones, diag
+#from pylab import zeros, vstack, concatenate, real, imag
+#from pylab import  outer, sort, ones, diag
 import numpy as np
+import scipy.io
 from matplotlib import pyplot as plt
 
-from VFDriver import VFDriver, DefVFOpts
-from RPDriver import RPDriver, DefRPOpts
+from VFDriver import VFDriver
+from RPDriver import RPDriver
 
-#TEST COMMENT #2
+#==============================
+# IMPORT bigY AND s
+#==============================
+
+mat = scipy.io.loadmat('ex2_Y.mat')
+bigY = mat['bigY']
+s = mat['s']
 
 #==============================
 #   POLE-RESIDUE FITTING
 #==============================
 
 class opts():
-    N = 50
+    N = 10
+    nu = 1e-3
     poletype = 'linlogcmplx'
-    weghtparam = 5
+    weightparam = 5
     Niter1 = 7
     Niter2 = 4
     asymp = 2
     logx = 0
+    remove_HFpoles = 0
+    factor_HF = 1.1
+    passive_DE = 0
+    passive_DE_TOLD = 1e-6
+    passive_DE_TOLE = 1e-16
+    screen = 1
 
+    
 poles = []
 [SER, rmserr, bigYfit, opts2] = VFDriver(bigY, s, poles, opts)
-
 #=============================
 #   PASSIVITY ENFORCEMENT
 #=============================
 
-opts.parametertype = 'Y'
-opts.plot.s_pass = np.transpose(2*pi*1j*np.linspace(0,2E5,1001))
-opts.plot.ylim = [-2e-3, 2e-3]
+opts2.parametertype = 'Y'
+opts2.plot.s_pass = np.transpose(2*pi*1j*np.linspace(0,2E5,1001))
+opts2.plot.ylim = [-2e-3, 2e-3]
 
-[SER, bigYfit_passive, opts3] = RPDriver(SER, s, opts)
-
+[SER, bigYfit_passive, opts3] = RPDriver(SER, s, opts2)
 #=============================
 #   WRITING TO NETLIST
 #=============================
@@ -68,3 +81,17 @@ opts.plot.ylim = [-2e-3, 2e-3]
 #===================================================
 #   COMPARING ORIGINAL MODEL WITH PERTURBED MODEL
 #===================================================
+
+plt.figure(1)
+Nc = len(SER.D)
+for row in range(0,Nc):
+    for col in range(row,Nc):
+        dum1 = np.squeeze(bigYfit[row,col,:])
+        dum2 = np.squeeze(bigYfit_passive[row,col,:])
+        h1 = plt.semilogy(s/(2*pi*1j),abs(dum1),'b')
+        h2 = plt.semilogy(s/(2*pi*1j),abs(dum2),'r--')
+        h3 = plt.semilogy(s/(2*pi*1j),abs(dum2-dum1),'g-')
+
+plt.xlabel('Frequency [Hz]')
+plt.ylabel('Admittance [S]')
+plt.legend()

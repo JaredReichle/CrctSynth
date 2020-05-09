@@ -1,7 +1,8 @@
 import numpy as np
-import scipy.linalg as lin
-from math import pi, sqrt
-import violextremaY
+import numpy.linalg as lin
+from math import pi
+import scipy as sci
+import violextremaY, pr2ss, FRPY, intercheig, rot, fitcalcABCDE
 
 class DefRPOpts():
     parametertype = 'Y'
@@ -17,9 +18,14 @@ class DefRPOpts():
     outputlevel = 1
     weight = []
 
+class MPopts():
+    auxflag = 1
+    solver = 'QUADPROG'
+    
+class QP():
+    first = 1
+
 def RPDriver(SER, s, opts):
-    MPopts.auxflag = 1
-    MPopts.solver = 'QUADPROG'
  
     [SER] = pr2ss(SER)  #Convert model from pole-residue to state-space
 
@@ -38,7 +44,7 @@ def RPDriver(SER, s, opts):
     
     #Check lines 174-182
     break_outer = 0
-    olds3 = []
+    #olds3 = []
     
     SER0 = SER
     Nc = len(SER.D)
@@ -53,14 +59,14 @@ def RPDriver(SER, s, opts):
     #Check lines 195-236
     
     outputlevel = opts.outputlevel
-    t = [0,0,0,0]
+    #t = [0,0,0,0]
     
     #============================================
     #   Passivity enforcement
     #============================================
     
     QP.first = 1
-    QPopts = []
+    #QPopts = []
     SER1 = SER0
     
     for iter_out in range(0,Niter_out):
@@ -121,12 +127,13 @@ def RPDriver(SER, s, opts):
             
             if outputlevel == 1:
                 print('Passivity Enforcement...')
-            if opts.method == 'FMP':
-                [SER1, MPopts] = FMP(SER0,s,s2,s3,MPopts)
-            elif opts.method == 'FRP': #Can't find FMP routine
-                [SER1, MPopts] = FRPY(SER0,s,s2,s3,MPopts)
-            else:
-                print('****** ERROR #1 in RPDriver.py')
+            #if opts.method == 'FMP':
+                #[SER1, MPopts] = FMP(SER0,s,s2,s3,MPopts)
+                #No such FMP routine
+                if opts.method == 'FRP': #Can't find FMP routine
+                    [SER1, MPopts] = FRPY(SER0,s,s2,s3,MPopts)
+                else:
+                    print('****** ERROR #1 in RPDriver.py')
             
             #if plotte == 1:
                 
@@ -137,7 +144,7 @@ def RPDriver(SER, s, opts):
                 [wintervals] = pass_check_Y(SERflag,SER1.poles,[],SER1.R,SER1.D)
                 [s_viol] = violextremaY(SERflag,np.transpose(wintervals),SER1.poles,[],SER1.R,SER1.D,colinterch)
                 
-            olds3 = s3
+            #olds3 = s3
             s3 = [s3,s2,np.transpose(s_viol)]
             
             if iter_in == Niter_in + 1:
@@ -151,9 +158,12 @@ def RPDriver(SER, s, opts):
     #   Plotting eigenvalues of modified model (SERC1, SERD1)
     #===========================================================
 
+    s_pass = opts.plot.s_pass
+
+    EE1 = []
     if plotte == 1:
         oldT0 = []
-        tell = -1
+        #tell = -1
         for k in range(0,len(s_pass)):
             Y = SER1.C*lin.diag((s_pass[k]*lin.I - lin.diag(SER1.A))**(-1))*SER1.B+SER1.D+s_pass[k]*SER1.E
             G = np.real(Y)
@@ -165,7 +175,7 @@ def RPDriver(SER, s, opts):
         
         #Plotting items
     
-    if isempty(wintervals):
+    if wintervals.size == 0:
         if outputlevel == 1:
             print('   ')
         print('---> Passivity was successfully enforced')
@@ -183,9 +193,9 @@ def RPDriver(SER, s, opts):
     #Producing plot
     Ns = len(s)
     bigYfit = np.zeros([Nc,Nc,Ns])
-    I = sparse(np.ones(len(SER.A[:,0]),1))
+    I = sci.sparse(np.ones(len(SER.A[:,0]),1))
     for k in range(0,Ns):
-        Y = SER1.C*lin.diag((s_pass[k]*lin.I - lin.diag(SER1.A))**(-1))*SER1.B+SER1.D+s_pass[k]*SER1.E
+        Y = SER1.C*lin.diag((s_pass[k]*I - lin.diag(SER1.A))**(-1))*SER1.B+SER1.D+s_pass[k]*SER1.E
         bigYfit[:,:,k] = Y
     
     #553
@@ -205,6 +215,7 @@ def RPDriver(SER, s, opts):
                         cindex[m] = 2
             
         n = -1
+        Ablock = []
         for m in range(0,N):
             n = n + 1
             if cindex[m] == 1:
@@ -217,16 +228,16 @@ def RPDriver(SER, s, opts):
                 b = SER1.B[n,:]
                 b1 = 2*np.real(b)
                 b2 = -2*np.imag(b)
-                Ablock [[a1,a2],[-a2,a1]]
+                Ablock[[a1,a2],[-a2,a1]]
                 SER1.A[n:n+1,n:n+1] = Ablock
                 SER1.C[:,n] = c1
                 SER1.C[:,n+1] = c2
                 SER1.B[n,:] = b1
                 SER1.B[n+1,:] = b2
     
-    return SER1, bigYfit, opts2
-    
     print('================ END ================')
+    
+    return SER1, bigYfit, opts
     
 def pass_check_Y(SERflag,A,B,C,D,colinterch):
     wintervals = []
@@ -240,7 +251,7 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
         BB = []
         B = np.ones([N,1])
         for col in range(0,Nc):
-            AA = lin.block_diag(AA,lin.diag(sparse(A)))
+            AA = lin.block_diag(AA,lin.diag(sci.sparse(A)))
             BB = lin.block_diag(BB,B)
             for row in range(col,Nc):
                 CC[row,(col-1)*N+1:col*N] = C[row,col,:]
@@ -264,13 +275,13 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
                 else:
                     if cindex[m-1] == 0 or cindex[m-1] == 2:
                         cindex[m] = 1
-                        cindnex[m+1] = 2
+                        cindex[m+1] = 2
                     else:
                         cindex[m] = 2
         n = -1
         for m in range(0,N):
             n = n + 1
-            if cindx[m] == 1:
+            if cindex[m] == 1:
                 a = A[n,n]
                 a1 = np.real(a)
                 a2 = np.imag(a)
@@ -304,10 +315,10 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
     S1 = A*(B*D**(-1)*C-A)
     
     wS1 = lin.eig(S1)
-    wS2 = sqrt(wS1)
+    #wS2 = sqrt(wS1)
     if sum(lin.eig(Dcmplx)==0)>0:
         wS1 = 1/wS1
-    ind = find(np.imag(wS1)==0)
+    ind = np.where(np.imag(wS1)==0)
     wS1 = wS1[ind]
     sing_w = np.sort(wS1)
     if len(sing_w) == 0:
@@ -318,9 +329,11 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
     B = Bcmplx
     C = Ccmplx
     D = Dcmplx
+    EE = []
+    viol = []
     
     midw = np.zeros([1+len(sing_w),1])
-    midw[0] = sing_1[0]/2
+    midw[0] = sing_w[0]/2
     midw[-1] = 2*sing_w[-1]
     for k in range(0,len(sing_w)-1):
         midw[k+1] = (sing_w[k] + sing_w[k+1])/2
@@ -344,7 +357,7 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
             else:
                 intervals = [intervals,np.transpose([sing_w[k-1],sing_w[k]])]
     
-    if isempty(intervals):
+    if len(intervals) == 0:
         wintervals = intervals
         return
     #Collapsing overlapping bands:

@@ -1,9 +1,12 @@
 import numpy as np
+import numpy.linalg as lin
+from math import pi
+import fitcalcABCDE, intercheig, rot
 
 def violextremaY(SERflag,wintervals,A,B,C,D,colinterch):
     s_pass = []
     g_pass = []
-    ss = []
+    #ss = []
     if len(wintervals) == 0:
         s_pass = []
         return
@@ -16,18 +19,19 @@ def violextremaY(SERflag,wintervals,A,B,C,D,colinterch):
         N = len(SERA)
         A = np.zeros([Nc*N,1])
         for col in range(0,Nc):
-            A[(col-1)*N+1:col*n] = SERA
+            A[(col-1)*N+1:col*N] = SERA
         B = np.zeros([Nc*N,Nc])
         for col in range(0,Nc):
             B[(col-1)*N+1:col*N,col] = np.ones([N,1])
         C = np.zeros([Nc*N,Nc])
         for row in range(0,Nc):
             for col in range(0,Nc):
-                C[ro1,(col-1)*N+1:col*N] = np.transpose(np.squeeze(SERC[row,col,:N]))
+                C[row,(col-1)*N+1:col*N] = np.transpose(np.squeeze(SERC[row,col,:N]))
         D = SERD
         A = lin.diag(A)
         
     s = []
+    EE = []
     Nc = len(D)
     g_pass = 1e16
     smin = 0
@@ -38,14 +42,14 @@ def violextremaY(SERflag,wintervals,A,B,C,D,colinterch):
             w2 = 2*pi*1e16
         else:
             w2 = wintervals[m,1]
-        spass1 = 1j*np.linspace(w1,w2,Nint)
+        s_pass1 = 1j*np.linspace(w1,w2,Nint)
         if w1 == 0:
             s_pass2 = 1j*np.logspace(-8,np.log10(w2),Nint)
         else:
             s_pass2 = 1j*np.logspace(np.log10(w1),np.log10(w2),Nint)
         s_pass = np.sort([s_pass1,s_pass2])
         Nint = 2 * Nint
-        oldt0 = []
+        oldT0 = []
         for k in range(0,len(s_pass)):
             Y = fitcalcABCDE(s_pass[k],lin.diag(A),B,C,D,np.zeros(Nc))
             G = np.real(Y)
@@ -72,8 +76,8 @@ def violextremaY(SERflag,wintervals,A,B,C,D,colinterch):
                     if(EE[row,k] < EE[row,k-1]) and (EE[row,k]<EE[row,k+1]):
                         s_pass_ind[k] = 1
         
-        s = [s,s_pass(find(s_pass_ind == 1))]
-        dim = min(EE)
+        s = [s,s_pass[np.where(s_pass_ind == 1)]]
+        dum = min(EE)
         [g_pass2, ind] = min(dum)
         smin2 = s_pass[ind]
         [g_pass, ind] = min([g_pass,g_pass2])

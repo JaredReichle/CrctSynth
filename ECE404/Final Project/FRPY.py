@@ -1,6 +1,15 @@
 import numpy as np
 import numpy.linalg as lin
 from math import sqrt
+import quadprog
+import fitcalcPRE, pr2ss
+
+class RPopts():
+    solver = 'QUADPROG'
+    test = 'None'
+    
+class Prob():
+    Check = 'test'
 
 def FRPY(SER,s,s2,s3,RPopts):
     auxflag = RPopts.auxflag
@@ -11,7 +20,7 @@ def FRPY(SER,s,s2,s3,RPopts):
     TOL = RPopts.TOLGD
     
     SERA = SER.poles
-    [m,n] = size(SERA)
+    [m,n] = np.size(SERA)
     if m < n:
         SERA = np.transpose(SERA)
     SERC = SER.R
@@ -54,8 +63,8 @@ def FRPY(SER,s,s2,s3,RPopts):
     Ns2 = len(s2)
     Nc = len(SERD)
     Nc2 = Nc*Nc
-    I = lin.eye(Nc)
-    M2mat = []
+    #I = lin.eye(Nc)
+    Mmat = []
     
     #=============================================
     #   Finding out which poles are complex
@@ -77,6 +86,10 @@ def FRPY(SER,s,s2,s3,RPopts):
     #======================================
     #   LOOP FOR LEAST SQUARES PROBLEM
     #======================================
+    
+    bigV = np.zeros([Nc,Nc])
+    bigD = np.zeros([Nc,Nc])
+    biginvV = np.zeros([Nc,Nc])
     
     if(Dflag+Eflag) == 2:
         bigA = np.zeros([Ns*Nc2,Nc*(N+2)])
@@ -261,17 +274,18 @@ def FRPY(SER,s,s2,s3,RPopts):
                 
                 bigA2[(k-1)*Nc2+1:k*Nc2,:] = Mmat
             bigA = [bigA,bigA2]
-        
+    
+    Escale = np.zeros(Nc)    
     bigA = [np.real(bigA),np.imag(bigA)]
     Acol = len(bigA[0,:])
     for col in range(0,Acol):
         Escale[col] = lin.norm(bigA[:,col],2)
         bigA[:,col] = bigA[:,col]/Escale[col]
-    H = np.transpose(A)*bigA
+    H = np.transpose(bigA)*bigA
     RPopts.H = H
     RPopts.Escale = Escale
     RPopts.bigV = bigV
-    Rpopts.biginvV = biginvV
+    RPopts.biginvV = biginvV
     if RPopts.outputlevel == 1:
         print('Done')
     else:
@@ -289,6 +303,9 @@ def FRPY(SER,s,s2,s3,RPopts):
     #=============================================
     #   LOOP FOR CONSTRAINT PROBLEM, TYPE #1
     #=============================================
+    Y = np.zeros([Nc, Ns2])
+    EE = []
+    Q = []
     for k in range(0,Ns2):
         sk = s2[k]
         for row in range(0,Nc):
@@ -307,6 +324,7 @@ def FRPY(SER,s,s2,s3,RPopts):
             
             for m in range(0,N):
                 VV = bigV[:,(m-1)*Nc+1:m*Nc]
+                invVV = biginvV[:,(m-1)*Nc+1:m*Nc]
                 for egenverdi in range(0,Nc):
                     tell = -1
                     gamm = VV[:,egenverdi]*invVV[egenverdi,:]
@@ -371,7 +389,7 @@ def FRPY(SER,s,s2,s3,RPopts):
         tell = -1
         offs = 0
         for m in range(0,N):
-            VV = bigV[:,(m-1)*nc+1:m*Nc]
+            VV = bigV[:,(m-1)*Nc+1:m*Nc]
             invVV = biginvV[:,(m-1)*Nc+1:m*Nc]
             for egenverdi in range(0,Nc):
                 tell = -1
@@ -405,7 +423,7 @@ def FRPY(SER,s,s2,s3,RPopts):
                     if row == col:
                         qij = V1[row]**2
                     else:
-                        qij = V1[row]*v1[col]
+                        qij = V1[row]*V1[col]
                     tell = tell + 1
                     Q[n,tell] = qij
         
@@ -435,7 +453,7 @@ def FRPY(SER,s,s2,s3,RPopts):
     if len(bigB) == 0:
         return      #No passivity violations
     
-    C = bigC
+    #C = bigC
     
     bigB = [np.real(bigB)]
     for col in range(0,len(RPopts.H)):
@@ -444,6 +462,56 @@ def FRPY(SER,s,s2,s3,RPopts):
     
     ff = np.zeros([len(RPopts.H),1])
     
-    #LINE 605
     
-    if 
+    #FIND ROUTINE FOR THE BELOW
+    if RPopts.solver == 'QUADPROG':
+        [dx,lambd] = quadprog(RPopts.H,ff,-bigB,bigC)
+    elif RPopts.solver == 'CPLEX':
+        print('ERROR: Python does not support CPLEX solver')   
+    
+    dx = dx/np.transpose(RPopts.Escale)
+    
+    for m in range(0,N):
+        if cindex[m] == 0:
+            D1 = lin.diag(dx[(m-1)*Nc+1:m*Nc])
+            SERCnew[:,:,m] = SERCnew[:,:,m] + bigV[:,(m-1)*Nc+1:m*Nc]*D1*biginvV[:,(m-1)*Nc+1:m*Nc]
+        elif cindex[m] == 1:
+            GAMM1 = bigV[:,(m-1)*Nc+1:m*Nc]
+            GAMM2 = bigV[:,(m+1-1)*Nc+1:(m+1)*Nc]
+            invGAMM1 = biginvV[:,(m-1)*Nc+1:m*Nc]
+            invGAMM2 = biginvV[:,(m+1-1)*Nc+1:(m+1)*Nc]
+            
+            D1 = lin.diag(dx[(m-1)*Nc+1:m*Nc])
+            D2 = lin.diag(dx[(m+1-1)*Nc+1:(m+1)*Nc])
+            R1 = np.real(SERC[:,:,m])
+            R2 = np.imag(SERC[:,:,m])
+            R1new = R1 + GAMM1*D1*invGAMM1
+            R2new = R2 + GAMM2*D2*invGAMM2
+            SERCnew[:,:,m] = R1new+1j*R2new
+            SERCnew[:,:,m+1]
+    
+    if Dflag == 1:
+        DD = lin.diag(dx[N*Nc+1:(N+1)*Nc])
+        SERDnew = SERDnew+VD*DD*invVD
+    if Eflag == 1:
+        EE = lin.diag(dx[N+Dflag*Nc+1:(N+Dflag+Eflag)*Nc])
+        SEREnew = SEREnew+VE*EE*invVE
+    
+    SERDnew = (SERDnew+np.transpose(SERDnew))/2
+    SEREnew = (SEREnew+np.transpose(SEREnew))/2
+    for m in range(0,N):
+        SERCnew[:,:,m] = (SERCnew[:,:,m]+np.transpose(SERCnew[:,:,m]))/2
+    
+    SER.R = SERCnew
+    SER.D = SERDnew
+    SER.E = SEREnew
+    [SER] = pr2ss(SER)
+    
+    RPopts.oldDflag = Dflag
+    RPopts.oldEflag = Eflag
+    
+    return SER, RPopts
+
+
+            
+            

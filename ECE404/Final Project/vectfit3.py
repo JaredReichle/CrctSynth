@@ -1,30 +1,24 @@
+import numpy as np
+import numpy.linalg as lin
+from math import sqrt
+
+class defa():
+    relax=1      #Use vector fitting with relaxed non-triviality constraint
+    stable=1     #Enforce stable poles
+    asymp=2      #Include only D in fitting (not E)   
+    skip_pole=0  #Do NOT skip pole identification
+    skip_res=0   #Do NOT skip identification of residues (C,D,E) 
+    cmplx_ss=1   #Create complex state space model
+    spy1=0       #No plotting for first stage of vector fitting
+    spy2=1       #Create magnitude plot for fitting of f(s) 
+    logx=1       #Use logarithmic abscissa axis
+    logy=1       #Use logarithmic ordinate axis 
+    errplot=1    #Include deviation in magnitude plot
+    phaseplot=0  #exclude plot of phase angle (in addition to magnitiude)
+    legend=1
+
 def vectfit3(f,s,poles,weight,opts):
     
-    import numpy as np
-    
-    class defa():
-        relax=1      #Use vector fitting with relaxed non-triviality constraint
-        stable=1     #Enforce stable poles
-        asymp=2      #Include only D in fitting (not E)   
-        skip_pole=0  #Do NOT skip pole identification
-        skip_res=0   #Do NOT skip identification of residues (C,D,E) 
-        cmplx_ss=1   #Create complex state space model
-        spy1=0       #No plotting for first stage of vector fitting
-        spy2=1       #Create magnitude plot for fitting of f(s) 
-        logx=1       #Use logarithmic abscissa axis
-        logy=1       #Use logarithmic ordinate axis 
-        errplot=1    #Include deviation in magnitude plot
-        phaseplot=0  #exclude plot of phase angle (in addition to magnitiude)
-        legend=1
-
-
-    #Merge default values into opts
-    A = fieldnames(defa)
-    for m in range(0,len(A)):
-        if not isfield(opts, A[m]):
-            dum = char(A[m])
-            dum2 = getfield(defa, dum)
-            opts = setfield(opts, dum, dum2)
     
     #Tolerances used by relaxed version of vector fitting
     TOLlow = 1e-18
@@ -75,7 +69,7 @@ def vectfit3(f,s,poles,weight,opts):
             print('ERROR in vectfit3: ==> First dimension of weight is neither 1 nor matches first dimension of f')
             return
     
-    LAMBD = la.diag(poles)
+    LAMBD = lin.diag(poles)
     Ns = len(s)
     N = len(LAMBD)
     Nc = len(f[:,0])
@@ -147,9 +141,9 @@ def vectfit3(f,s,poles,weight,opts):
         scale = 0
         for m in range(0,Nc):
             if len(weight[0,:]) == 1:
-                scale = scale+(norm(weight[:,0]*np.transpose(f[m,:])))**2
+                scale = scale+(lin.norm(weight[:,0]*np.transpose(f[m,:])))**2
             else:
-                scale = scale+(norm(weight[:,m]*np.transpose(f[m,:])))**2
+                scale = scale+(lin.norm(weight[:,m]*np.transpose(f[m,:])))**2
         scale = sqrt(scale)/Ns
         
         if opts.relax == 1:
@@ -185,7 +179,7 @@ def vectfit3(f,s,poles,weight,opts):
                     bb[(n-1)*(N+1)+1:n*(N+1),0] = Q[-1,N+offs+1:-1] #Investigate
             
             for col in range(0,len(AA[0,:])):
-                Escale[col] = 1/norm(AA[:,col])
+                Escale[col] = 1/lin.norm(AA[:,col])
                 AA[:,col] = Escale[col]*AA[:,col]
             x = AA/bb
             x = x*Escale
@@ -199,9 +193,9 @@ def vectfit3(f,s,poles,weight,opts):
                 if x[-1] == 0:
                     Dnew = 1
                 elif abs(x[-1]) < TOLlow:
-                    Dnew = sign(x[-1])*TOLlow
+                    Dnew = np.sign(x[-1])*TOLlow
                 elif abs(x[-1]) > TOLhigh:
-                    Dnew = sign(x[-1])*TOLhigh
+                    Dnew = np.sign(x[-1])*TOLhigh
             
             for n in range(0,Nc):
                 A = np.zeros(Ns,(N+offs)+N)
@@ -227,7 +221,7 @@ def vectfit3(f,s,poles,weight,opts):
                 AA[(n-1)*N+1:n*N,:] = R22
                 bb[(n-1)*N+1:n*N,0] = np.transpose(Q[:,ind1:ind2])*b
             for col in range(0,len(AA[0,:])):
-                Escale[col] = 1/norm(AA[:,col])
+                Escale[col] = 1/lin.norm(AA[:,col])
                 AA[:,col] = Escale[col]*AA[:,col]
             
             x = AA/bb
@@ -236,6 +230,7 @@ def vectfit3(f,s,poles,weight,opts):
             
         C = x[0:-2]
         D = x[-1]
+        RES3 = []
         
         #We now change back to make C complex:
         for m in range(0,N):
@@ -251,7 +246,7 @@ def vectfit3(f,s,poles,weight,opts):
             for m in range(0,N):
                 Dk[:,m] = 1/(s-LAMBD[m,m])
             RES3[:,0] = D + Dk*C
-            freq = s/(2*pi*1j)
+            #freq = s/(2*pi*1j)
             
             ##PLOTTING
             
@@ -277,11 +272,11 @@ def vectfit3(f,s,poles,weight,opts):
                     m = m + 1
         
         ZER = LAMBD-B*np.transpose(C)/D
-        roetter = np.transpose(la.eig(ZER))
+        roetter = np.transpose(lin.eig(ZER))
         unstables = np.real(roetter) > 0
         if opts.stable == 1:
             roetter[unstables] = roetter[unstables] - 2*np.real(roetter[unstables])
-        roetter = sort(roetter)
+        roetter = np.sort(roetter)
         N = len(roetter)
         
         #====================
@@ -297,7 +292,7 @@ def vectfit3(f,s,poles,weight,opts):
             if np.imag(roetter[m]) == 0:
                 N1 = m
         if N1 < N:
-            roetter[N1+1:N] = sort(roetter[N1+1:N])
+            roetter[N1+1:N] = np.sort(roetter[N1+1:N])
         
         roetter = roetter-2*1j*np.imag(roetter)
         SERA = roetter
@@ -384,7 +379,7 @@ def vectfit3(f,s,poles,weight,opts):
             #clear Escale
             Escale = np.zeros([1,len(A[0,:])])
             for col in range(0,len(A[0,:])):
-                Escale[col] = norm(A[:,col],2)
+                Escale[col] = lin.norm(A[:,col],2)
                 A[:,col] = A[:,col]/Escale[col]
             X = A/BB
             for n in range(0,Nc):
@@ -415,7 +410,7 @@ def vectfit3(f,s,poles,weight,opts):
                     A[0:Ns,N+1] = 1
                     A[0:Ns,N+2] = s
                 for m in range(0,len(A[0,:])):
-                    A[0:ns,m] = weight[:,n]*A[0:Ns,m]
+                    A[0:Ns,m] = weight[:,n]*A[0:Ns,m]
                 
                 BB = weight[:,n]*np.transpose(f[n,:])
                 A[Ns+1:2*Ns,:] = np.imag(A[0:Ns,:])
@@ -432,7 +427,7 @@ def vectfit3(f,s,poles,weight,opts):
                 #clear Escale
                 Escale = np.zeros([1,len(A[0,:])])
                 for col in range(0,len(A[0,:])):
-                    Escale[col] = norm(A[:,col],2)
+                    Escale[col] = lin.norm(A[:,col],2)
                     A[:,col] = A[:,col]/Escale[col]
                 x = A/BB
                 x = x/np.transpose(Escale)
@@ -509,7 +504,7 @@ def vectfit3(f,s,poles,weight,opts):
     #=========================================
     
     if opts.cmplx_ss != 1:
-        A = la.diag(la.sparse(A))
+        A = lin.diag(lin.sparse(A))
         
         cindex = np.zeros([1,N])
         for m in range(0,N):
@@ -544,13 +539,14 @@ def vectfit3(f,s,poles,weight,opts):
                 B[n,:] = b1
                 B[n+1,:] = b2
         else:
-            A = sparse(diag(A))
+            A = lin.sparse(lin.diag(A))
         
     #end if cmplx_ss != 1
-    SER.A = A
-    SER.B = B
-    SER.C = C
-    SER.D = D
-    SER.E = E
+    class SER():
+        A = A
+        B = B
+        C = C
+        D = D
+        E = E
         
     return SER, poles, rmserr, fit, opts
