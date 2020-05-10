@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import log10, ceil, floor
 from math import sqrt
-import vectfit3
+from vectfit3 import vectfit3, DefaultVect3Opts
 import numpy.linalg as lin
 
 class DefVFOpts():
@@ -27,10 +27,14 @@ class DefVFOpts():
     passive_DE = 0
     passive_DE_TOLD = 1e-6
     passive_DE_TOLE = 1e-16
+    spy1 = 0
+    spy2 = 0
 
 
 
 def VFDriver(bigH, s, poles, opts):
+    
+    vect3opts = DefaultVect3Opts()
     
     Niter1 = opts.Niter1
     Niter2 = opts.Niter2
@@ -44,7 +48,7 @@ def VFDriver(bigH, s, poles, opts):
     fit1 = []
     fit2 = []
     fit3 = []
-    Ns = len(s[0])-1
+    Ns = len(s[0])
     
     if len(poles) == 0:
         if opts.N == 0:
@@ -57,19 +61,26 @@ def VFDriver(bigH, s, poles, opts):
             if opts.poletype == 'linlogcmplx':
                 opts.poletype = 'logcmplx'
         nu = opts.nu
-        if len(opts.poletype) == 8:
+        if len(opts.poletype) == 8: #N = 10, 5 complex conjugate pairs 
             if opts.poletype == 'lincmplx': #Complex, linearly spaced starting poles
-                bet = np.linspace(s[0,0]/1j,s[0,Ns]/1j,floor(N/2))
-                poles = []
-                for n in range (0,len(bet)):
+                bet = np.linspace(s[0,0]/1j,s[0,-1]/1j,floor(N/2))
+                for n in range (0,len(bet)): #n (length of bet) = 5, N (ORDER) = 10
                     alf = -nu*bet[n]
-                    poles = [poles, (alf-1j*bet[n]), (alf+1j*bet[n])]
+                    piece1 = alf-1j*bet[n] #Complex conjugate
+                    piece2 = alf+1j*bet[n] #Complex conjugate
+                    poles = np.append(poles,piece1)
+                    poles = np.append(poles,piece2)
+                poles = poles.reshape(1,-1)
             elif opts.poletype == 'logcmplx': #Complex, log spaced starting poles
-                bet = np.logspace(log10(s[0]/1j),log10(s[Ns]/1j),floor(N/2))
-                poles = []
+                bet = np.logspace(log10(s[0,0]/1j),log10(s[0,-1]/1j),floor(N/2))
+                poles = np.zeros([1,N], dtype = 'complex128')
                 for n in range(0,len(bet)):
                     alf = -nu*bet[n]
-                    poles = [poles, (alf-1j*bet[n]), (alf+1j*bet[n])]
+                    piece1 = alf-1j*bet[n] #Complex conjugate
+                    piece2 = alf+1j*bet[n] #Complex conjugate
+                    poles = np.append(poles,piece1)
+                    poles = np.append(poles,piece2)
+                poles = poles.reshape(1,-1)
             else:
                 print('ERROR: Illegal value for opts.poletype')
                 print('Valid input: ''lincmplex'' and ''logcmplx''')
@@ -79,19 +90,26 @@ def VFDriver(bigH, s, poles, opts):
             
         elif len(opts.poletype) == 11:
             if opts.poletype == 'linlogcmplx':
-                bet = np.linspace(s[0,0]/1j, s[0,Ns]/1j, ceil((N-1)/4))
                 poles1 = []
+                bet = np.linspace(s[0,0]/1j, s[0,-1]/1j, ceil((N-1)/4))
                 for n in range(0,len(bet)):
                     alf = -nu*bet[n]
-                    poles1 = [poles1, (alf-1j*bet[n]), (alf+1j*bet[n])]
-                bet = np.logspace(log10(s[0,0]/1j), log10(s[0,Ns]/1j), 2+floor(N/4))
+                    piece1 = alf-1j*bet[n] #Complex conjugate
+                    piece2 = alf+1j*bet[n] #Complex conjugate
+                    poles1 = np.append(poles1,piece1)
+                    poles1 = np.append(poles1,piece2)
+                bet = np.logspace(log10(s[0,0]/1j), log10(s[0,-1]/1j), 2+floor(N/4))
                 bet[0] = 0
                 bet[-1] = 0
                 poles2 = []
                 for n in range(0,len(bet)):
                     alf = -nu*bet[n]
-                    poles2 = [poles2, (alf-1j*bet[n]), (alf+1j*bet[n])]
-                poles = [poles1, poles2]
+                    piece1 = alf-1j*bet[n] #Complex conjugate
+                    piece2 = alf+1j*bet[n] #Complex conjugate
+                    poles2 = np.append(poles2,piece1)
+                    poles2 = np.append(poles2,piece2)
+                poles = np.append(poles1, poles2)
+                poles = poles.reshape(1,-1)
                 
             else:
                 print('ERROR: Illegal value for opts.poletype')
@@ -100,23 +118,23 @@ def VFDriver(bigH, s, poles, opts):
                 print(opts.poletype)
                 return
         
-        if len(poles) < N:
+        if len(poles[0]) < N:
             if opts.poletype == 'lincmplx':
-                pole_extra = -(s[0]/1j+s[-1]/1j)/2
+                pole_extra = -(s[0,0]/1j+s[0,-1]/1j)/2
             elif opts.poletype == 'logcmplx' or opts.poletype == 'linlogcmplx':
-                pole_extra = -10**((log10(s[0]/1j)+log10(s[-1]/1j))/2)
-            poles = [poles, pole_extra]
+                pole_extra = -10**((log10(s[0,0]/1j)+log10(s[0,-1]/1j))/2)
+            poles = np.append(poles, pole_extra)
         
         opts.poletype = oldpoletype
         
     Nc = len(bigH[:,0,0])
-    Ns = len(s)
+    Ns = len(s[0])
     
-    f = np.zeros([Nc,1])
+    f = np.zeros([sum(range(Nc+1)),len(bigH[0,0,:])], dtype = 'complex128')
     
     if opts.screen == 1:
         print('==================== START ====================')
-    tell = 0
+    tell = -1
     for col in range(0,Nc):
         for row in range(col,Nc):
             tell = tell + 1
@@ -126,6 +144,7 @@ def VFDriver(bigH, s, poles, opts):
     
     #Fitting options
     DefVFOpts.spy1 = 0
+    DefVFOpts.spy2 = 0
     DefVFOpts.skip_pole = 0
     DefVFOpts.skip_res = 1
     DefVFOpts.legend = 1
@@ -136,23 +155,23 @@ def VFDriver(bigH, s, poles, opts):
         f_sum = f
     if Nc > 1:  #For the multi terminal case
         #Forming columns sum and associated LS weight
-        f_sum = 0
-        tell = 0
+        f_sum = np.zeros([1,f.shape[1]])
+        tell = -1
         for row in range(0,Nc):
             for col in range(row,Nc):
                 tell = tell + 1
                 if weightparam == 1 or weightparam == 4 or weightparam == 5:
-                    f_sum = f_sum+f[tell,:]
+                    f_sum = f_sum + f[tell,:]
                 elif weightparam == 2:
                     f_sum = f_sum + f[tell,:]/lin.norm(f[tell,:])
                 elif weightparam == 3:
                     f_sum = f_sum + f[tell,:]/sqrt(lin.norm(f[n,:]))
     
     #Creating LS weight
-    if opts.weight == 0: #Automatic specification of weight
+    if len(opts.weight) == 0: #Automatic specification of weight
         if weightparam == 1: #1 for all elements in LS problem
-            weight = np.ones(Ns)
-            weight_sum = np.ones(Ns)
+            weight = np.ones([1,Ns])
+            weight_sum = np.ones([1,Ns])
         elif weightparam == 2: #Individual element weighting
             weight = 1/abs(f)
             weight_sum = 1/abs(f_sum)
@@ -172,7 +191,7 @@ def VFDriver(bigH, s, poles, opts):
             return
     else:
         weight = np.zeros([nnn,Ns])
-        tell = 0
+        tell = -1
         for row in range(0,Nc):
             for col in range(row,Nc):
                 tell = tell + 1
@@ -185,7 +204,7 @@ def VFDriver(bigH, s, poles, opts):
         for itr in range(0,Niter1):
             if opts.screen == 1:
                 print('Iter ', str(itr))
-            [SER,poles,rmserr,fit] = vectfit3(f_sum,s,poles,weight_sum,DefVFOpts)
+            [SER,poles,rmserr,fit] = vectfit3(f_sum,s,poles,weight_sum,vect3opts)
     if opts.screen == 1:
         print('****Fitting column ...')
     DefVFOpts.skip_res = 1

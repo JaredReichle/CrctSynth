@@ -26,9 +26,9 @@ from math import pi
 #from pylab import  outer, sort, ones, diag
 import numpy as np
 import scipy.io
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 
-from VFDriver import VFDriver
+from VFDriver import VFDriver, DefVFOpts
 from RPDriver import RPDriver
 
 #==============================
@@ -42,6 +42,8 @@ s = mat['s']
 #==============================
 #   POLE-RESIDUE FITTING
 #==============================
+
+vfopts = DefVFOpts()
 
 class opts():
     N = 10
@@ -61,7 +63,7 @@ class opts():
 
     
 poles = []
-[SER, rmserr, bigYfit, opts2] = VFDriver(bigY, s, poles, opts)
+[SER, rmserr, bigYfit, opts2] = VFDriver(bigY, s, poles, vfopts)
 #=============================
 #   PASSIVITY ENFORCEMENT
 #=============================
