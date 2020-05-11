@@ -7,9 +7,9 @@ def pr2ss(SER):
     Nc = len(SER.D)
     N = len(R[0,0,:])
     C = np.zeros([Nc,Nc*N])
-    A = lin.sparse(Nc*N,1)
-    B = lin.sparse(Nc*N,Nc)
-    poles = lin.diag(lin.diag(poles))
+    A = np.zeros([Nc*N,1], dtype = 'complex128')
+    B = np.zeros([Nc*N,Nc], dtype = 'complex128')
+    #poles = lin.diag(lin.diag(poles))
     for m in range(0,N):
         Rdum = np.squeeze(R[:,:,m])
         for n in range(0,Nc):

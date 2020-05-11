@@ -3,12 +3,16 @@ import numpy.linalg as lin
 from math import sqrt
 import fitcalcPRE, pr2ss
 
-class RPopts():
+class FRPopts():
     solver = 'QUADPROG'
     test = 'None'
+    TOLGD = 1e-6
+    TOLE = 1e-12
+    weightfactor = 0.001
+    weightparam = 1
+    outputlevel = 1
+    auxflag = 1
     
-class Prob():
-    Check = 'test'
 
 def FRPY(SER,s,s2,s3,RPopts):
     auxflag = RPopts.auxflag

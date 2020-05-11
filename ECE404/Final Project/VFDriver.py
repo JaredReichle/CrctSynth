@@ -1,15 +1,15 @@
 import numpy as np
 from numpy import log10, ceil, floor
 from math import sqrt
-from vectfit3 import vectfit3, DefaultVect3Opts
+from vectfit3 import vectfit3, DefaultVect3Opts, SERClass
 import numpy.linalg as lin
 
 class DefVFOpts():
     N = 10
-    poletype = 'lincmplx'
+    poletype = 'linlogcmplx'
     nu = 1e-3
-    Niter1 = 4
-    Niter2 = 4
+    Niter1 = 7
+    Niter2 = 0
     weight = []
     weightparam = 1
     asymp = 2
@@ -99,8 +99,7 @@ def VFDriver(bigH, s, poles, opts):
                     poles1 = np.append(poles1,piece1)
                     poles1 = np.append(poles1,piece2)
                 bet = np.logspace(log10(s[0,0]/1j), log10(s[0,-1]/1j), 2+floor(N/4))
-                bet[0] = 0
-                bet[-1] = 0
+                bet = bet[1:-1]
                 poles2 = []
                 for n in range(0,len(bet)):
                     alf = -nu*bet[n]
@@ -124,9 +123,9 @@ def VFDriver(bigH, s, poles, opts):
             elif opts.poletype == 'logcmplx' or opts.poletype == 'linlogcmplx':
                 pole_extra = -10**((log10(s[0,0]/1j)+log10(s[0,-1]/1j))/2)
             poles = np.append(poles, pole_extra)
-        
         opts.poletype = oldpoletype
-        
+    
+    
     Nc = len(bigH[:,0,0])
     Ns = len(s[0])
     
@@ -143,14 +142,14 @@ def VFDriver(bigH, s, poles, opts):
     nnn = tell
     
     #Fitting options
-    DefVFOpts.spy1 = 0
-    DefVFOpts.spy2 = 0
-    DefVFOpts.skip_pole = 0
-    DefVFOpts.skip_res = 1
-    DefVFOpts.legend = 1
+    vect3opts.spy1 = 0
+    vect3opts.spy2 = 0
+    vect3opts.skip_pole = 0
+    vect3opts.skip_res = 1
+    vect3opts.legend = 1
     
-    oldspy2 = DefVFOpts.spy2
-    DefVFOpts.spy2 = 0
+    oldspy2 = vect3opts.spy2
+    opts.spy2 = 0
     if Nc == 1:
         f_sum = f
     if Nc > 1:  #For the multi terminal case
@@ -166,6 +165,7 @@ def VFDriver(bigH, s, poles, opts):
                     f_sum = f_sum + f[tell,:]/lin.norm(f[tell,:])
                 elif weightparam == 3:
                     f_sum = f_sum + f[tell,:]/sqrt(lin.norm(f[n,:]))
+    
     
     #Creating LS weight
     if len(opts.weight) == 0: #Automatic specification of weight
@@ -207,17 +207,17 @@ def VFDriver(bigH, s, poles, opts):
             [SER,poles,rmserr,fit] = vectfit3(f_sum,s,poles,weight_sum,vect3opts)
     if opts.screen == 1:
         print('****Fitting column ...')
-    DefVFOpts.skip_res = 1
+    vect3opts.skip_res = 1
     for itr in range(0,Niter2):
         if opts.screen == 1:
             print('Iter ', str(itr))
         if itr == Niter2:
-            DefVFOpts.skip_res = 0
-        [SER,poles,rmserr,fit1] = vectfit3(f,s,poles,weight,DefVFOpts)
+            vect3opts.skip_res = 0
+        [SER,poles,rmserr,fit1] = vectfit3(f,s,poles,weight,vect3opts)
     if Niter2 == 0:
-        DefVFOpts.skip_res = 0
-        DefVFOpts.skip_pole = 1
-        [SER,poles,rmserr,fit1] = vectfit3(f,s,poles,weight,DefVFOpts)
+        vect3opts.skip_res = 0
+        vect3opts.skip_pole = 1
+        [SER,poles,rmserr,fit1] = vectfit3(f,s,poles,weight,vect3opts) #HAVE STOPPED HERE
     
     #========================================
     #   Throwing out high frequency poles
@@ -272,14 +272,14 @@ def VFDriver(bigH, s, poles, opts):
                 Emod[tell] = EE[row,col]
                 fmod[tell,:] = fit2[tell,:] - Dmod[tell] - s*Emod[tell]
         if opts.screen == 1:
-            if DefVFOpts.asymp == 2:
+            if vect3opts.asymp == 2:
                 print('****Refitting C while enforcing D=0...')
-            elif DefVFOpts.asymp == 3:
+            elif vect3opts.asymp == 3:
                 print('****Refitting C while enforcing D=0, E=0...')
-        DefVFOpts.skip_pole = 0
-        DefVFOpts.asymp = 1
+        vect3opts.skip_pole = 0
+        vect3opts.asymp = 1
         for itr in range(0,0):
-            [SER,poles,rmserr,fit3]=vectfit3(fmod,s,poles,weight,DefVFOpts)
+            [SER,poles,rmserr,fit3]=vectfit3(fmod,s,poles,weight,vect3opts)
         SER.D = Dmod
         SER.E = Emod
         for tell in range(0,len(fit3[:,0])):
@@ -288,28 +288,28 @@ def VFDriver(bigH, s, poles, opts):
     if Nc > 1:
         if opts.screen == 1:
             print('****Transforming model of lower matrix triangle into state-space model of full matrix...')
-        [SER] = tri2full(SER)
+        SER.A = SER.A*np.eye(N)
+        SER = tri2full(SER) #ERRORS: A[31,30], B[31,3], 
     
     if opts.screen == 1:
         print('****Generating pole-residue model...')
-    R = []
-    a = []
-    [R,a] == ss2pr(SER.A,SER.B,SER.C)
+    [R,a] = ss2pr(SER.A,SER.B,SER.C)
     SER.R = R
     SER.poles = a
     
     #rmserror of fitting:
-    if fit3.size == 0:
+    if len(fit3) != 0:
         fit = fit3
-    elif fit2.size == 0:
+    elif len(fit2) != 0:
         fit = fit2
-    elif fit1.size == 0:
+    elif len(fit1) != 0:
         fit = fit1
+    fit = np.transpose(fit)
     diff = fit - f
     rmserr = sqrt(sum(sum(abs(diff**2))))/sqrt(nnn*Ns)
     
-    DefVFOpts.spy2 = oldspy2
-    if DefVFOpts.spy2 == 1:
+    vect3opts.spy2 = oldspy2
+    if vect3opts.spy2 == 1:
         if opts.screen == 1:
             print('****Plotting of results')
         
@@ -320,7 +320,7 @@ def VFDriver(bigH, s, poles, opts):
     if opts.screen == 1:
         print('===================== END =====================')
     
-    bigHfit = np.zeros([Nc,Nc,Ns])
+    bigHfit = np.zeros([Nc,Nc,Ns], dtype = 'complex128')
     tell = -1
     for row in range(0,Nc):
         for col in range(row,Nc):
@@ -336,7 +336,7 @@ def VFDriver(bigH, s, poles, opts):
 
 def tri2full(SER):
     
-    import scipy.linalg as lin
+    import scipy
     
     A = SER.A
     B = SER.B
@@ -345,36 +345,42 @@ def tri2full(SER):
     E = SER.E
     
     tell = 0
-    for k in range(0,1e4):
+    for k in range(1,10000): #1e4
         tell = tell + k
         if tell == len(D):
             Nc = k
             break
     N = len(A)
     tell = -1
-    CC = np.zeros([Nc,Nc*N])
-    AA = []
-    BB = []
-    CC = []
-    DD = []
-    EE = []
+    CC = np.zeros([Nc,Nc*N], dtype = 'complex128')
+    AA = None
+    BB = None
+    DD = np.zeros([Nc,Nc], dtype = 'complex128')
+    EE = np.zeros([Nc,Nc], dtype = 'complex128')
     for col in range(0,Nc):
-        AA = lin.block_diag(AA,A)
-        BB = lin.block_diag(BB,B)
+        if col == 0:
+            AA = A
+            BB = B
+        else:
+            AA = scipy.linalg.block_diag(AA,A)
+            BB = scipy.linalg.block_diag(BB,B)
         for row in range(col,Nc):
             tell = tell + 1
             DD[row,col] = D[tell]
             EE[row,col] = E[tell]
-            CC[row,(col-1)*N+1:col*N] = C[tell,:]
-            CC[col,(row-1)*N+1:row*N] = C[tell,:]
-    DD = DD + np.transpose(DD-lin.diag(lin.diag(DD)))
-    EE = EE + np.transpose(EE-lin.diag(lin.diag(DD)))
+            tmpci1 = (col)*N
+            tmpci12 = (col+1)*N
+            tmpci2 = (row)*N
+            tmpci22 = (row+1)*N
+            CC[row,tmpci1:tmpci12] = C[tell,:]
+            CC[col,tmpci2:tmpci22] = C[tell,:]
+            #CC[row,(col-1)*N+1:col*N] = C[tell,:]
+            #CC[col,(row-1)*N+1:row*N] = C[tell,:]
+    DD = DD + np.transpose(DD-np.diag(np.diag(DD)))
+    EE = EE + np.transpose(EE-np.diag(np.diag(DD)))
     
-    SER.A = AA
-    SER.B = BB
-    SER.C = CC
-    SER.D = DD
-    SER.E = EE
+    SER = SERClass(AA,BB,CC,DD,EE)
+
     
     return SER
 
@@ -383,11 +389,15 @@ def tri2full(SER):
 
 def ss2pr(A,B,C):
     
-    import numpy as np
-    import scipy.linalg as lin
-    
     #Converting real-only state-space model into complex model
-    if max(max(abs(A-lin.diag(lin.diag(A))))) != 0:
+    tmp1 = np.diag(A)
+    tmp2 = np.diag(tmp1)
+    tmp3 = A - tmp2
+    tmp4 = abs(tmp3)
+    tmp5 = np.max(tmp4)
+    tmp6 = np.max(tmp5)
+    if tmp6 != 0:
+        #if max(max(abs(A-np.diag(np.diag(A))))) != 0:
         #errflag = 0
         for m in range(0,len(A)-1):
             if A[m,m+1] != 0:
@@ -402,15 +412,15 @@ def ss2pr(A,B,C):
                 
     #Converting complex state-space model into pole-residue model
     Nc = len(C[:,0])
-    N = len(A)/Nc
-    R = np.zeros([Nc,Nc,N])
+    N = int(len(A)/Nc)
+    R = np.zeros([Nc,Nc,N], dtype = 'complex128')
     for m in range(0,N):
-        Rdum = np.zeros(Nc)
+        Rdum = np.zeros(Nc, dtype = 'complex128')
         for n in range(0,Nc):
-            ind = (n-1)*N+m
+            ind = (n)*N+m
             Rdum = Rdum + C[:,ind]*B[ind,:]
         R[:,:,m] = Rdum
-    a = np.full(lin.diag(A[0:N,0:N]))
+    a = np.diag(A[0:N,0:N])
     
     return R, a
     

@@ -2,7 +2,13 @@ import numpy as np
 import numpy.linalg as lin
 from math import pi
 import scipy as sci
-import violextremaY, pr2ss, FRPY, intercheig, rot, fitcalcABCDE
+
+#from pr2ss import pr2ss
+from violextremaY import violextremaY
+from FRPY import FRPY, FRPOpts
+from intercheig import intercheig
+from rot import rot
+from fitcalcABCDE import fitcalcABCDE
 
 class DefRPOpts():
     parametertype = 'Y'
@@ -17,33 +23,36 @@ class DefRPOpts():
     colinterch = 1
     outputlevel = 1
     weight = []
+    s_pass = np.transpose(2*pi*1j*np.linspace(0,2E5,1001))
+    ylim = [-2e-3, 2e-3]
 
-class MPopts():
-    auxflag = 1
-    solver = 'QUADPROG'
-    
+
+#LINE 256 MATLAB    
 class QP():
     first = 1
 
 def RPDriver(SER, s, opts):
  
-    [SER] = pr2ss(SER)  #Convert model from pole-residue to state-space
+    #SER = pr2ss(SER)  #Convert model from pole-residue to state-space
 
     print('================== START ==================')
     
-    colinterch = opts.colinterch
-    MPopts.TOLGD = opts.TOLGD
-    MPopts.TOLE = opts.TOLE
-    MPopts.weightfactor = opts.weightfactor
-    MPopts.weight = opts.weight
-    MPopts.outputlevel = opts.outputlevel
+    frpopts = FRPOpts()
     
-    #Check if line 163 is necessary
+    frpopts.TOLGD = opts.TOLGD
+    frpopts.TOLE = opts.TOLE
+    frpopts.weightfactor = opts.weightfactor
+    frpopts.weight = opts.weight
+    frpopts.outputlevel = opts.outputlevel
+    
+    colinterch = opts.colinterch
     
     print('*** Y-PARAMETERS ***')
     
-    #Check lines 174-182
+    #Check lines 174-182 for plotting
+    
     break_outer = 0
+    
     #olds3 = []
     
     SER0 = SER
@@ -56,10 +65,9 @@ def RPDriver(SER, s, opts):
     #   Plotting eigenvalues of orinigal model
     #============================================
     
-    #Check lines 195-236
+    #Check lines 195-236 - Revisit
     
     outputlevel = opts.outputlevel
-    #t = [0,0,0,0]
     
     #============================================
     #   Passivity enforcement
@@ -67,6 +75,7 @@ def RPDriver(SER, s, opts):
     
     QP.first = 1
     #QPopts = []
+    
     SER1 = SER0
     
     for iter_out in range(0,Niter_out):
@@ -74,8 +83,8 @@ def RPDriver(SER, s, opts):
             SER0 = SER1
             break
         s3 = []
-        
-        for iter_in in range(0,0,Niter_in+1):
+        SERflag = 1
+        for iter_in in range(1,Niter_in+1):
             s2 = []
             SERflag = 1
             if outputlevel == 1:
@@ -193,7 +202,7 @@ def RPDriver(SER, s, opts):
     #Producing plot
     Ns = len(s)
     bigYfit = np.zeros([Nc,Nc,Ns])
-    I = sci.sparse(np.ones(len(SER.A[:,0]),1))
+    I = sci.sparse(np.ones([len(SER.A[:,0]),1]))
     for k in range(0,Ns):
         Y = SER1.C*lin.diag((s_pass[k]*I - lin.diag(SER1.A))**(-1))*SER1.B+SER1.D+s_pass[k]*SER1.E
         bigYfit[:,:,k] = Y

@@ -1,6 +1,17 @@
 import numpy as np
 import numpy.linalg as lin
-from math import sqrt
+from math import sqrt, pi
+from matplotlib import pyplot as plt
+
+class SERClass:
+    def __init__(self, A, B, C, D, E):
+        self.A = A
+        self.B = B
+        self.C = C
+        self.D = D
+        self.E = E
+        self.R = None
+        self.poles = None
 
 class DefaultVect3Opts():
     relax=1      #Use vector fitting with relaxed non-triviality constraint
@@ -19,10 +30,13 @@ class DefaultVect3Opts():
 
 def vectfit3(f,s,poles,weight,opts):
     
+    
     #Tolerances used by relaxed version of vector fitting
     TOLlow = 1e-18
     TOLhigh = 1e18
     [a,b] = poles.shape
+    if a > b:
+        poles = np.transpose(poles)
     if s[0,0] == 0 and a == 1:
         if poles[0] == 0 and poles[1] != 0:
             poles[0] = -1
@@ -68,17 +82,18 @@ def vectfit3(f,s,poles,weight,opts):
             print('ERROR in vectfit3: ==> First dimension of weight is neither 1 nor matches first dimension of f')
             return
     
+    
     LAMBD = np.diag(poles[0]) #NxN diagonal
     Ns = len(s)
     N = len(LAMBD)
     Nc = len(f) #HEY LOOK <--- ITS THIS GUY AGAIN
-    B = np.ones(N)
+    B = np.ones([N,1])
     SERA = poles
     SERC = np.zeros([Nc,N])
     SERD = np.zeros(Nc)
     SERE = np.zeros(Nc)
     roetter = poles
-    fit = np.zeros([Nc,Ns])
+    fit = np.zeros([Nc,Ns], dtype = 'complex128')
     
     weight = np.transpose(weight)
     if len(weight[0,:]) == 1:
@@ -157,7 +172,7 @@ def vectfit3(f,s,poles,weight,opts):
         if opts.relax == 1:
             AA = np.zeros([Nc*(N+1),N+1], dtype = 'complex128')
             bb = np.zeros([Nc*(N+1),1])
-            Escale = np.zeros([1, len(AA[0,:])], dtype = 'complex128')
+            Escale = np.zeros([1, len(AA[0,:])])
             for n in range(0,Nc):
                 A = np.zeros([Ns,(N+offs)+N+1], dtype = 'complex128')
                 if common_weight == 1:
@@ -172,8 +187,8 @@ def vectfit3(f,s,poles,weight,opts):
                     A[:,m] = tmp3[:,0]
                     #A[:,m] = weig[:,0]*Dk[:,m] #302x21 = 302x1 times 302x11
                 inda = N+offs
-                for m in range(0,N+1):
-                    tmp1 = weig
+                for m in range(0,N+1): #Right block
+                    tmp1 = -weig
                     tmp2 = Dk[:,m].reshape(-1,1)
                     tmp3 = f[n,:].reshape(-1,1)
                     tmp4 = tmp1*tmp2*tmp3
@@ -198,7 +213,13 @@ def vectfit3(f,s,poles,weight,opts):
                 R22 = R[ind1:ind2,ind1:ind2]
                 AA[(n)*(N+1):(n+1)*(N+1),:] = R22
                 if (n + 1) == Nc:
-                    bb[n*(N+1):(n+1)*(N+1),0] = Q[-1,N+offs:]
+                    tmpq1 = Q[-1,N+offs:]
+                    tmpq2 = np.transpose(tmpq1)
+                    tmpq3 = Ns*scale*tmpq2
+                    tmpindb1 = n*(N+1)
+                    tmpindb2 = (n+1)*(N+1)
+                    bb[tmpindb1:tmpindb2,0] = tmpq3
+                    #bb[n*(N+1):(n+1)*(N+1),0] = Q[-1,N+offs:]
             
             for col in range(0,len(AA[0,:])):
                 Escale[0,col] = 1/lin.norm(AA[:,col])
@@ -283,16 +304,38 @@ def vectfit3(f,s,poles,weight,opts):
                 Dk[:,m] = 1/(s-LAMBD[m,m])
             RES3[:,0] = D + Dk*C
             
+            freq = s/(2*pi*1j)
             
-            #freq = s/(2*pi*1j)
+            if opts.logx == 1:
+                if opts.logy == 1:
+                    plt.figure(3)
+                    plt.loglog(freq,abs(np.conj(np.transpose(RES3))), 'b')
+                    plt.xlim([freq[0], freq[Ns]])
+                else: #logy = 0
+                    plt.figure(3)
+                    plt.semilogx(freq, abs(np.conj(np.tranpose(RES3))), 'b')
+                    plt.xlim([freq[0], freq[Ns]])
+            else: #logx = 0
+                if opts.logy == 1:
+                    plt.figure(3)
+                    plt.semilogy(freq,abs(np.conj(np.transpose(RES3))),'b')
+                    plt.xlim([freq[0],freq[Ns]])
+                else:
+                    plt.figure(3)
+                    plt.plot(s/(2*pi*1j),abs(np.conj(np.transpose(RES3))),'b')
+                    plt.xlim([freq[0],freq[Ns]])
             
-            ##PLOTTING
+            plt.xlabel('Frequency [Hz]')
+            plt.ylabel('Magnitude')
+            if opts.legend == 1:
+                plt.legend('sigma')
             
         #==========================================
         #   We now calculate the zeros for sigma
         #==========================================
         
         m = -1
+        
         
         for n in range(0,N):
             m = m + 1
@@ -309,9 +352,9 @@ def vectfit3(f,s,poles,weight,opts):
                     C[m] = koko.real
                     m = m + 1
         
-        tmp1 = np.transpose(C)
-        tmp2 = B*tmp1
-        tmp3 = tmp2/D[0]
+        tmp1 = np.transpose(C) #CHECKED
+        tmp2 = B*tmp1      
+        tmp3 = tmp2/D[0]    
         tmp4 = LAMBD - tmp3
         ZER = LAMBD - (B*np.transpose(C))/D[0]
         reig, reig2 = lin.eig(ZER)
@@ -325,20 +368,20 @@ def vectfit3(f,s,poles,weight,opts):
         #====================
         for n in range(0,N):
             for m in range(n+1,N):
-                if np.imag(roetter[m]) == 0 and np.imag(roetter[n]) != 0:
+                if roetter[m].imag == 0 and roetter[n].imag != 0:
                     trans = roetter[n]
                     roetter[n] = roetter[m]
                     roetter[m] = trans
         
         N1 = 0
         for m in range(0,N):
-            if np.imag(roetter[m]) == 0:
+            if roetter[m].imag == 0:
                 N1 = m
         if N1 < N:
             roetter[N1:N] = np.sort(roetter[N1:N])
         
         roetter = roetter - 2*1j*np.imag(roetter)
-        SERA = roetter
+        SERA = np.transpose(roetter)
         
     #=========================================
     #   RESIDUE IDENTIFICATION
@@ -347,12 +390,13 @@ def vectfit3(f,s,poles,weight,opts):
         
         #We now calculate SER for f, using the modified zeros of sigma as new poles:
         
-        LAMBD = roetter
+        tmproe = roetter.reshape(-1,1)
+        LAMBD = tmproe
         
         cindex = np.zeros([N,1])
         for m in range(0,N):
             if np.imag(LAMBD[m]) != 0:
-                if m == 1:
+                if m == 0:
                     cindex[m] = 1
                 else:
                     if cindex[m-1] == 0 or cindex[m-1] == 2: #One before real, or one before second complex
@@ -397,7 +441,7 @@ def vectfit3(f,s,poles,weight,opts):
         
         if common_weight == 1:
             
-            Dk = np.zeros([Ns,N])
+            Dk = np.zeros([Ns,N], dtype = 'complex128')
             for m in range(0,N):
                 if cindex[m] == 0:  #Real pole
                     Dk[:,m] = weight/(s-LAMBD[m])
@@ -405,12 +449,12 @@ def vectfit3(f,s,poles,weight,opts):
                     tmp1 = weight/(s-LAMBD[m])
                     tmp2 = weight/(s-np.conj(LAMBD[m]))
                     tmp3 = tmp2 + tmp1
-                    Dk[:,m] = tmp3[:,0]
+                    Dk[:,m] = tmp3[:,0] #ISSUE - Complex casting
                     #Dk[:,m] = weight/(s-LAMBD[m]) + weight/(s-np.conj(LAMBD[m]))
                     tmp1 = 1j*weight/(s-LAMBD[m])
                     tmp2 = 1j*weight/(s-np.conj(LAMBD[m]))
                     tmp3 = tmp1 - tmp2
-                    Dk[:,m] = tmp3[:,0]
+                    Dk[:,m+1] = tmp3[:,0] #ISSUE - Complex casting
                     #Dk[:,m+1] = 1j*weight/(s-LAMBD[m]) - 1j*weight/(s-np.conj(LAMBD[m]))
             
             #LINE 600
@@ -444,20 +488,11 @@ def vectfit3(f,s,poles,weight,opts):
                 A[Ns:2*Ns] = A[Ns:2*Ns,N+2]
                 
             #clear Escale
-            Escale = np.zeros([1,len(A[0,:])])
+            Escale = np.zeros([len(A[0,:]),1])
             for col in range(0,len(A[0,:])):
-                Escale[0,col] = lin.norm(A[:,col],2)
-                A[:,col] = A[:,col]/Escale[0,col]
-                
-                #Ns = 302
-                #N = 10
-                #Nc = 1
-            AAA = np.zeros([2*Ns,2*Ns], dtype = 'complex128')
-            AAA[0:2*Ns,0:10] = A    
-            
-                #ERROR LINE BELOW
-            
-            X = lin.solve(AAA,BB) #11x11 / 11x1 - > 604x10 / 604x1
+                Escale[col] = lin.norm(A[:,col],2)
+                A[:,col] = A[:,col]/Escale[col]   
+            [X, residuals, rank, sva] = lin.lstsq(A,BB, rcond=None)
             for n in range(0,Nc):
                 X[:,n] = X[:,n]/np.transpose(Escale)
             
@@ -540,17 +575,26 @@ def vectfit3(f,s,poles,weight,opts):
         SERB = B
         SERC = C
         
-        Dk = np.zeros([Ns,N])
+        Dk = np.zeros([Ns,N], dtype = 'complex128')
         for m in range(0,N):
-            Dk[:,m] = 1/(s-SERA[m])
+            tmp1 = SERA[m]
+            tmp2 = s - tmp1
+            tmp3 = 1/tmp2
+            Dk[:,m] = tmp3[:,0]
+            #Dk[:,m] = 1/(s-SERA[m]) #[302,10] = 1/ ([10,1] - [10,1])
         for n in range(0,Nc):
-            fit[n,:] = np.transpose(Dk*np.transpose(SERC[n,:]))
+            tmp1 = SERC[n,:].reshape(1,-1) #Row vector
+            tmp2 = np.transpose(tmp1) #Column vector
+            tmp3 = np.matmul(Dk,tmp2)
+            tmp4 = np.transpose(tmp3)
+            fit[n,:] = tmp4
+            #fit[n,:] = np.transpose(Dk*np.transpose(SERC[n,:]))
             if opts.asymp == 2:
                 fit[n,:] = fit[n,:] + SERD[n]
             elif opts.asymp == 3:
                 fit[n,:] = fit[n,:] + SERD[n]+np.tranpose(s)*SERE[n]
         
-        fit = np.transpose(fit)
+        #fit = np.transpose(fit)
         diff = fit - f
         rmserr = sqrt(sum(sum(abs(diff**2))))/sqrt(Nc*Ns)
         
@@ -563,6 +607,7 @@ def vectfit3(f,s,poles,weight,opts):
     
     A = SERA
     poles = A
+    
     if opts.skip_res != 1:
         B = SERB
         C = SERC
@@ -618,11 +663,9 @@ def vectfit3(f,s,poles,weight,opts):
             A = lin.sparse(lin.diag(A))
         
     #end if cmplx_ss != 1
-    class SER():
-        A = A
-        B = B
-        C = C
-        D = D
-        E = E
+            
+    SER = SERClass(A,B,C,D,E)
+    
+    poles = poles.reshape(-1,1)
         
-    return SER, poles, rmserr, fit, opts
+    return SER, poles, rmserr, fit
