@@ -93,8 +93,10 @@ def RPDriver(SER, s, opts):
                 print(str(iter_out), '  ', str(iter_in), '  ')
             
             if iter_in == 0:
-                [wintervals] = pass_check_Y(SERflag, SER.A,SER.B,SER.C,SER.D,colinterch)
+                wintervals = pass_check_Y(SERflag, SER.A,SER.B,SER.C,SER.D,colinterch)
                 #[wintervals] = pass_check_Y(SERflag, SER.poles,[],SER1.R,SER1.D,colinterch)
+                
+                #Still have violating intervals when none are present
                 
                 if len(wintervals) > 0:
                     if outputlevel == 1:
@@ -328,30 +330,37 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
     tmp1 = lin.eig(D)[0]
     tmp2 = tmp1 == 0
     tmp3 = any(tmp2)
-    tmp4 = tmp3 != True
-    if 1:
-    #if any(lin.eig(D) == 0) > 0:
+    tmp4 = tmp3 != False
+    if tmp4:
+    #if sum(lin.eig(D) == 0) > 0:
         Ahat = np.linalg.solve(A,np.eye(N))
-        Bhat = Ahat*B
-        Chat = C*Ahat
-        Dhat = D-C*Ahat*B
+        Bhat = np.matmul(Ahat,B)
+        Chat = np.matmul(C,Ahat)
+        Ddum = np.matmul(Ahat,B)
+        Dhat = D-np.matmul(C,Ddum)
         A = Ahat
         B = Bhat
         C = Chat
         D = Dhat
     
-    tmp2 = B/D
-    tmp3 = tmp2*C
-    tmp4 = tmp3-A
-    tmp5 = A*tmp4
+    tmp1 = D**(-1)
+    tmp2 = np.matmul(B,tmp1)
+    tmp3 = np.matmul(tmp2,C)
+    tmp4 = tmp3 - A
+    tmp5 = np.matmul(A,tmp4)
     
-    S1 = A*(B*D**(-1)*C-A)
+    S1 = tmp5
     
-    wS1 = lin.eig(S1)
-    #wS2 = sqrt(wS1)
-    if sum(lin.eig(Dcmplx)==0)>0:
+    wS1 = lin.eig(S1)[0]
+    wS1 = np.sqrt(wS1)
+    tmp1 = lin.eig(Dcmplx)[0]
+    tmp2 = tmp1 == 0
+    tmp3 = any(tmp2)
+    tmp4 = tmp3 != False
+    if tmp4:
+        #if sum(lin.eig(Dcmplx)==0)>0:
         wS1 = 1/wS1
-    ind = np.where(np.imag(wS1)==0)
+    ind = np.where(np.imag(wS1) == 0)
     wS1 = wS1[ind]
     sing_w = np.sort(wS1)
     if len(sing_w) == 0:
@@ -362,38 +371,46 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
     B = Bcmplx
     C = Ccmplx
     D = Dcmplx
-    EE = []
-    viol = []
     
-    midw = np.zeros([1+len(sing_w),1])
+    viol = np.zeros(len(sing_w))
+    
+    midw = np.zeros([len(sing_w),1])
     midw[0] = sing_w[0]/2
     midw[-1] = 2*sing_w[-1]
     for k in range(0,len(sing_w)-1):
         midw[k+1] = (sing_w[k] + sing_w[k+1])/2
     
+    EE = np.zeros([Nc,len(sing_w)], dtype = 'complex128')
+    
     for k in range(0,len(midw)):
         sk = 1j*midw[k]
-        G = np.real(fitcalcABCDE(sk,lin.diag(A),B,C,D,E))
-        EE[:,k] = lin.eig(G)
-        if any(EE[:,k]<0):
+        Anew = np.diag(A)
+        Gnew = fitcalcABCDE(sk,Anew,B,C,D,E)
+        G = np.real(Gnew)
+        EE[:,k] = lin.eig(G)[0]
+        if any(EE[:,k] < 0):
             viol[k] = 1
         else:
             viol[k] = 0
     
-    intervals = []
+    intervals = np.zeros([2,1], dtype = 'double')
     for k in range(0,len(midw)):
         if viol[k] == 1:
-            if k == 1:
-                intervals = [intervals,[0,np.transpose(sing_w[0])]]
-            elif k == len(midw):
-                intervals = [intervals,np.transpose([sing_w[k-1],1e16])]
+            if k == 0:
+                intervals[:,:] = np.transpose([0,sing_w[0]]).reshape(-1,1)
+                #intervals = np.hstack((intervals,dummy))
+            elif k == len(midw)-1:
+                dummy = np.transpose([sing_w[k-1],1e16]).reshape(-1,1)
+                intervals = np.hstack((intervals,dummy))
             else:
-                intervals = [intervals,np.transpose([sing_w[k-1],sing_w[k]])]
+                dummy = np.transpose([sing_w[k-1],sing_w[k]]).reshape(-1,1)
+                intervals = np.hstack((intervals,dummy))
     
     if len(intervals) == 0:
         wintervals = intervals
         return
-    #Collapsing overlapping bands:
+    
+    #Collapsing overlapping bands: DOUBLE CHECK THE BELOW
     tell = -1
     killindex = 0
     for k in range(1,0,len(intervals[0,:])):

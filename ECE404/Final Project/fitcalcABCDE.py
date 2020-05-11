@@ -1,14 +1,19 @@
 import numpy as np
+import numpy.matlib as mat
 
 def fitcalcABCDE(sk,A,B,C,D,E):
     Nc = len(D)
     #N = len(A)
     #I = np.ones([N,1])
     
-    dum = np.tile(1/(sk-A),1,Nc)
-    C = C*np.transpose(dum)
+    dum = mat.repmat(1/(sk-A),Nc,1)
+    C = C*dum
     
-    Yfit = C*B + D + sk*E
+    tmp1 = np.matmul(C,B)
+    tmp2 = sk*E
+    tmp3 = tmp1 + D + tmp2
+    Yfit = tmp3
+    #Yfit = C*B + D + sk*E
     
     return Yfit
 
