@@ -26,6 +26,7 @@ class DefRPOpts():
     weight = []
     s_pass = np.transpose(2*pi*1j*np.linspace(0,2E5,1001))
     ylim = [-2e-3, 2e-3]
+    plot = True
 
 
 #LINE 256 MATLAB    
@@ -50,7 +51,18 @@ def RPDriver(SER, s, opts):
     
     print('*** Y-PARAMETERS ***')
     
-    #Check lines 174-182 for plotting
+    plotte = 0
+    if opts.plot == True:
+        plotte = 1
+        s_pass = opts.s_pass
+        if hasattr(opts, 'xlim'):
+            xlimflag = 1
+        else:
+            xlimflag = 0
+        if hasattr(opts,'ylim'):
+            ylimflag = 1
+        else:
+            ylimflag = 0
     
     break_outer = 0
     
@@ -96,13 +108,12 @@ def RPDriver(SER, s, opts):
                 wintervals = pass_check_Y(SERflag, SER.A,SER.B,SER.C,SER.D,colinterch)
                 #[wintervals] = pass_check_Y(SERflag, SER.poles,[],SER1.R,SER1.D,colinterch)
                 
-                #Still have violating intervals when none are present
                 
                 if len(wintervals) > 0:
                     if outputlevel == 1:
                         print('N.o. violating intervals: ', str(len(wintervals[0,:])))
                 
-                if len(wintervals) == 0 and all(lin.eig(SER1.D) >= 0) and all(lin.eig(SER1.E)):
+                if len(wintervals) == 0 and all(lin.eig(SER1.D)[0] >= 0) and all(lin.eig(SER1.E)[0] >= 0):
                     SER0 = SER1
                     break_outer = 1
                     break
@@ -173,14 +184,14 @@ def RPDriver(SER, s, opts):
     #   Plotting eigenvalues of modified model (SERC1, SERD1)
     #===========================================================
 
-    s_pass = opts.plot.s_pass
+    s_pass = opts.s_pass
 
     EE1 = []
     if plotte == 1:
         oldT0 = []
         #tell = -1
         for k in range(0,len(s_pass)):
-            Y = SER1.C*lin.diag((s_pass[k]*lin.I - lin.diag(SER1.A))**(-1))*SER1.B+SER1.D+s_pass[k]*SER1.E
+            Y = SER1.C*np.diag((s_pass[k]*np.eye - np.diag(SER1.A))**(-1))*SER1.B+SER1.D+s_pass[k]*SER1.E
             G = np.real(Y)
         [T0,D] = lin.eig(G)
         T0 = rot(T0)    #Find routine - minimizing phase angle of eigenvectors
@@ -366,7 +377,7 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
     if len(sing_w) == 0:
         sing_w = []
         intervals = []
-        return
+        return wintervals
     A = Acmplx
     B = Bcmplx
     C = Ccmplx
@@ -406,22 +417,23 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
                 dummy = np.transpose([sing_w[k-1],sing_w[k]]).reshape(-1,1)
                 intervals = np.hstack((intervals,dummy))
     
-    if len(intervals) == 0:
-        wintervals = intervals
-        return
+    if intervals[0,0] == 0 and intervals[1,0] == 0:
+        #wintervals = intervals
+        return wintervals
     
     #Collapsing overlapping bands: DOUBLE CHECK THE BELOW
     tell = -1
-    killindex = 0
-    for k in range(1,0,len(intervals[0,:])):
-        if intervals[1,k-1] == intervals[0,k]:
+    killindex = np.zeros(len(intervals[0,:]))
+    for k in range(1,len(intervals[0,:])):
+        if 1:
+        #if intervals[1,k-1] == intervals[0,k]:
             tell = tell +1
             intervals[1,k-1] = intervals[1,k]
             intervals[:,k] = intervals[:,k-1]
             killindex[tell] = k - 1
     
     if killindex != 0:
-        intervals[:,killindex] = []
+        np.delete(intervals[:,killindex])
     wintervals = intervals
     
     return wintervals

@@ -5,7 +5,7 @@ from vectfit3 import vectfit3, DefaultVect3Opts, SERClass
 import numpy.linalg as lin
 
 class DefVFOpts():
-    N = 10
+    N = 100
     poletype = 'linlogcmplx'
     nu = 1e-3
     Niter1 = 7

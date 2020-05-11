@@ -142,7 +142,9 @@ def vectfit3(f,s,poles,weight,opts):
         Dk = np.zeros([Ns,N], dtype = 'complex128')
         for m in range(0,N):
             if cindex[m] == 0:  #Real pole
-                Dk[:,m] = 1/(s-LAMBD[m,m])
+                #tmpreq = 1/(s-LAMBD[m,m])
+                #tmpreq = tmpreq.reshape(-1,1)
+                Dk[:,m] = (1/(s-LAMBD[m,m]))[:,0]
             elif cindex[m] == 1: #Complex pole, first part
                 tmp1 = 1/(s-LAMBD[m,m])
                 tmp2 = 1/(s-np.conj(LAMBD[m,m]))
