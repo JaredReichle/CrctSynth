@@ -1,7 +1,9 @@
 import numpy as np
 import numpy.linalg as lin
 from math import pi
-import fitcalcABCDE, intercheig, rot
+from fitcalcABCDE import fitcalcABCDE
+from intecheig import intercheig
+from rot import rot
 
 def violextremaY(SERflag,wintervals,A,B,C,D,colinterch):
     s_pass = []
@@ -51,7 +53,9 @@ def violextremaY(SERflag,wintervals,A,B,C,D,colinterch):
         Nint = 2 * Nint
         oldT0 = []
         for k in range(0,len(s_pass)):
-            Y = fitcalcABCDE(s_pass[k],lin.diag(A),B,C,D,np.zeros(Nc))
+            Ainput = np.diag(A)
+            Einput = np.zeros(Nc)
+            Y = fitcalcABCDE(s_pass[k],Ainput,B,C,D,Einput)
             G = np.real(Y)
             if colinterch == 0:
                 EE[:,k] = lin.eig(G)

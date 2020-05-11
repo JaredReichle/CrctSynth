@@ -35,7 +35,7 @@ Ensure that the following files are all within your working directory:
     
 Then, open up Final_Project.py and execute program. This should show the
 results from the vector fitting and passivity enforcement in real time, and
-produce a SPICE netlist within the working directory labeled ____.sp
+produce a SPICE netlist within the working directory labeled spice_net_list.sp
 
 === Parameters ===
 
@@ -52,7 +52,7 @@ The state space model:
 
 === Returns ===
 
-___.sp - The spice netlist that has been passively enforced and fitted to the data
+spice_net_list.sp - The spice netlist that has been passively enforced and fitted to the data
 
 bigYfit - The fitted data to bigY. Accuracy is dependent on number of iterations
 and order (N) of model.

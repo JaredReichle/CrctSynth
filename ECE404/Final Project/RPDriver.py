@@ -113,12 +113,18 @@ def RPDriver(SER, s, opts):
                     if outputlevel == 1:
                         print('N.o. violating intervals: ', str(len(wintervals[0,:])))
                 
-                if len(wintervals) == 0 and all(lin.eig(SER1.D)[0] >= 0) and all(lin.eig(SER1.E)[0] >= 0):
-                    SER0 = SER1
-                    break_outer = 1
-                    break
+#                if len(wintervals) == 0 and all(lin.eig(SER1.D)[0] >= 0) and all(lin.eig(SER1.E)[0] >= 0):
+#                    SER0 = SER1
+#                    break_outer = 1
+#                    break
                 
-                [s_viol,g_pass,ss] = violextremaY(SERflag,np.transpose(wintervals),SER.poles,[],SER1.R, SER1.D,colinterch)
+                test_wintervals = np.array([[1e3,1e5],[1e4,1e6]])
+                
+                wintervalinput = np.transpose(test_wintervals)
+                
+                [s_viol,g_pass,ss] = violextremaY(SERflag = 0,wintervalinput,SER.A,SER.B,SER.C,SER.D,colinterch) #SERflag = 1
+
+                #[s_viol,g_pass,ss] = violextremaY(SERflag,np.transpose(test_wintervals),SER.poles,[],SER1.R, SER1.D,colinterch)
                 
                 s2 = [ np.transpose(s_viol)]
                 s2 = np.sort(s2)
@@ -159,7 +165,7 @@ def RPDriver(SER, s, opts):
                 else:
                     print('****** ERROR #1 in RPDriver.py')
             
-            #if plotte == 1:
+            if plotte == 1:
                 
                 #PLOTTING FUNCTIONS
                 
@@ -184,6 +190,8 @@ def RPDriver(SER, s, opts):
     #   Plotting eigenvalues of modified model (SERC1, SERD1)
     #===========================================================
 
+    #Break_outer true breakpoint
+
     s_pass = opts.s_pass
 
     EE1 = []
@@ -191,6 +199,7 @@ def RPDriver(SER, s, opts):
         oldT0 = []
         #tell = -1
         for k in range(0,len(s_pass)):
+            #TAKE A LOOK AT THE BELOW
             Y = SER1.C*np.diag((s_pass[k]*np.eye - np.diag(SER1.A))**(-1))*SER1.B+SER1.D+s_pass[k]*SER1.E
             G = np.real(Y)
         [T0,D] = lin.eig(G)

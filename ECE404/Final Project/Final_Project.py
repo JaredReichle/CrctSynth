@@ -2,7 +2,7 @@
 Final_Project.py
 Name: Jared Reichle
 Date created: 4/30/2020
-Description: 
+Description: See README.txt
 
 Resources:
 Credit for this program goes to Bjorn Gustaven.
@@ -30,6 +30,7 @@ import scipy.io
 
 from VFDriver import VFDriver, DefVFOpts
 from RPDriver import RPDriver, DefRPOpts
+from NetListGen import NetListGen
 
 #==============================
 # IMPORT bigY AND s
@@ -63,6 +64,8 @@ poles = []
 vfopts = DefVFOpts()
 
 [SER, rmserr, bigYfit, opts2] = VFDriver(bigY, s, poles, vfopts)
+
+np.savez('data.np', R = SER.R, poles = SER.poles)
 #=============================
 #   PASSIVITY ENFORCEMENT
 #=============================
@@ -78,7 +81,11 @@ rpopts = DefRPOpts()
 #   NETLIST GENERATION
 #=============================
 
-#Write code here from project 2
+filename = 'spice_net_list'
+
+#Help with defining inputs to function
+NetListGen(SER.R, SER.poles, filename)
+
 
 
 #===================================================
