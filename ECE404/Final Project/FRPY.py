@@ -1,7 +1,8 @@
 import numpy as np
 import numpy.linalg as lin
 from math import sqrt
-import fitcalcPRE, pr2ss
+from fitcalcPRE import fitcalcPRE
+from pr2ss import pr2ss
 
 class FRPOpts:
     solver = 'QUADPROG'

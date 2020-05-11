@@ -65,10 +65,16 @@ vfopts = DefVFOpts()
 
 [SER, rmserr, bigYfit, opts2] = VFDriver(bigY, s, poles, vfopts)
 
-np.savez('data.np', R = SER.R, poles = SER.poles)
+np.savez('data', R = SER.R, poles = SER.poles)
 #=============================
 #   PASSIVITY ENFORCEMENT
 #=============================
+
+filename = 'spice_net_list' #Do not add extension
+
+#Help with defining inputs to function
+NetListGen(SER.R, SER.poles, filename)
+
 
 rpopts = DefRPOpts()
 
@@ -80,13 +86,6 @@ rpopts = DefRPOpts()
 #=============================
 #   NETLIST GENERATION
 #=============================
-
-filename = 'spice_net_list'
-
-#Help with defining inputs to function
-NetListGen(SER.R, SER.poles, filename)
-
-
 
 #===================================================
 #   COMPARING ORIGINAL MODEL WITH PERTURBED MODEL

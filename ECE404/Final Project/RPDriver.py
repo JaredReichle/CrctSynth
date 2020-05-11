@@ -122,7 +122,7 @@ def RPDriver(SER, s, opts):
                 
                 wintervalinput = np.transpose(test_wintervals)
                 
-                [s_viol,g_pass,ss] = violextremaY(SERflag = 0,wintervalinput,SER.A,SER.B,SER.C,SER.D,colinterch) #SERflag = 1
+                [s_viol,g_pass,ss] = violextremaY(0,wintervalinput,SER.A,SER.B,SER.C,SER.D,colinterch) #SERflag = 0
 
                 #[s_viol,g_pass,ss] = violextremaY(SERflag,np.transpose(test_wintervals),SER.poles,[],SER1.R, SER1.D,colinterch)
                 
@@ -167,6 +167,7 @@ def RPDriver(SER, s, opts):
             
             if plotte == 1:
                 
+                plotte = 1
                 #PLOTTING FUNCTIONS
                 
             #end plotte

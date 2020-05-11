@@ -2,7 +2,7 @@ import numpy as np
 import numpy.linalg as lin
 from math import pi
 from fitcalcABCDE import fitcalcABCDE
-from intecheig import intercheig
+from intercheig import intercheig
 from rot import rot
 
 def violextremaY(SERflag,wintervals,A,B,C,D,colinterch):

@@ -63,7 +63,7 @@ def VFDriver(bigH, s, poles, opts):
         nu = opts.nu
         if len(opts.poletype) == 8: #N = 10, 5 complex conjugate pairs 
             if opts.poletype == 'lincmplx': #Complex, linearly spaced starting poles
-                bet = np.linspace(s[0,0]/1j,s[0,-1]/1j,floor(N/2))
+                bet = np.linspace(s[0,0]/1j,s[0,-1]/1j,int(floor(N/2)))
                 for n in range (0,len(bet)): #n (length of bet) = 5, N (ORDER) = 10
                     alf = -nu*bet[n]
                     piece1 = alf-1j*bet[n] #Complex conjugate
@@ -72,7 +72,7 @@ def VFDriver(bigH, s, poles, opts):
                     poles = np.append(poles,piece2)
                 poles = poles.reshape(1,-1)
             elif opts.poletype == 'logcmplx': #Complex, log spaced starting poles
-                bet = np.logspace(log10(s[0,0]/1j),log10(s[0,-1]/1j),floor(N/2))
+                bet = np.logspace(log10(s[0,0]/1j),log10(s[0,-1]/1j),int(floor(N/2)))
                 poles = np.zeros([1,N], dtype = 'complex128')
                 for n in range(0,len(bet)):
                     alf = -nu*bet[n]
@@ -91,14 +91,14 @@ def VFDriver(bigH, s, poles, opts):
         elif len(opts.poletype) == 11:
             if opts.poletype == 'linlogcmplx':
                 poles1 = []
-                bet = np.linspace(s[0,0]/1j, s[0,-1]/1j, ceil((N-1)/4))
+                bet = np.linspace(s[0,0]/1j, s[0,-1]/1j, int(ceil((N-1)/4)))
                 for n in range(0,len(bet)):
                     alf = -nu*bet[n]
                     piece1 = alf-1j*bet[n] #Complex conjugate
                     piece2 = alf+1j*bet[n] #Complex conjugate
                     poles1 = np.append(poles1,piece1)
                     poles1 = np.append(poles1,piece2)
-                bet = np.logspace(log10(s[0,0]/1j), log10(s[0,-1]/1j), 2+floor(N/4))
+                bet = np.logspace(log10(s[0,0]/1j), log10(s[0,-1]/1j), int(2+floor(N/4)))
                 bet = bet[1:-1]
                 poles2 = []
                 for n in range(0,len(bet)):
