@@ -1,7 +1,8 @@
 import numpy as np
 import numpy.linalg as lin
 from math import pi
-import scipy as sci
+import scipy.linalg
+
 
 #from pr2ss import pr2ss
 from violextremaY import violextremaY
@@ -83,17 +84,18 @@ def RPDriver(SER, s, opts):
             SER0 = SER1
             break
         s3 = []
-        SERflag = 1
-        for iter_in in range(1,Niter_in+1):
+        
+        for iter_in in range(0,Niter_in+1):
             s2 = []
-            SERflag = 1
+            SERflag = 0
             if outputlevel == 1:
                 print('  ')
-                print(str(iter_out), '  ', str(iter_in-1), '  ')
+                print(str(iter_out), '  ', str(iter_in), '  ')
             
-            if iter_in == 1:
-                [wintervals] = pass_check_Y(SERflag, SER.poles,[],SER1.R,SER1.D,colinterch)
-            
+            if iter_in == 0:
+                [wintervals] = pass_check_Y(SERflag, SER.A,SER.B,SER.C,SER.D,colinterch)
+                #[wintervals] = pass_check_Y(SERflag, SER.poles,[],SER1.R,SER1.D,colinterch)
+                
                 if len(wintervals) > 0:
                     if outputlevel == 1:
                         print('N.o. violating intervals: ', str(len(wintervals[0,:])))
@@ -110,7 +112,7 @@ def RPDriver(SER, s, opts):
                 if len(s2) == 0 and all(lin.eig(SER1.D)>0):
                     break
             
-            if iter_in == 1:
+            if iter_in == 0:
                 if outputlevel == 1:
                     if min(g_pass) < 0:
                         print('Max violation, eig(G) : ', str(g_pass), ' @ ', str((ss)/(2*pi*1j)))
@@ -149,6 +151,7 @@ def RPDriver(SER, s, opts):
                 #PLOTTING FUNCTIONS
                 
             #end plotte
+            #Confusing. Check below
             if iter_in != Niter_in + 1:
                 [wintervals] = pass_check_Y(SERflag,SER1.poles,[],SER1.R,SER1.D)
                 [s_viol] = violextremaY(SERflag,np.transpose(wintervals),SER1.poles,[],SER1.R,SER1.D,colinterch)
@@ -156,6 +159,7 @@ def RPDriver(SER, s, opts):
             #olds3 = s3
             s3 = [s3,s2,np.transpose(s_viol)]
             
+            #Confusing. Check below
             if iter_in == Niter_in + 1:
                 s3 = []
                 s2 = []
@@ -255,16 +259,25 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
         Nc = len(D)
         N = len(A)
         tell = -1
-        CC = np.zeros([Nc,Nc*N])
-        AA = []
-        BB = []
-        B = np.ones([N,1])
+        A = np.diag(A)
+        CC = np.zeros([Nc,Nc*N], dtype = 'complex128')
+        B = np.ones([N,1], dtype = 'complex128')
         for col in range(0,Nc):
-            AA = lin.block_diag(AA,lin.diag(sci.sparse(A)))
-            BB = lin.block_diag(BB,B)
-            for row in range(col,Nc):
-                CC[row,(col-1)*N+1:col*N] = C[row,col,:]
-                CC[col,(row-1)*N+1:row*N] = C[row,col,:]
+            if col == 0:
+                AA = A
+                BB = B
+            else:
+                AA = scipy.linalg.block_diag(AA,A)
+                BB = scipy.linalg.block_diag(BB,B)
+            for row in range(col,Nc):               
+                tmpci1 = (col)*N
+                tmpci12 = (col+1)*N
+                tmpci2 = (row)*N
+                tmpci22 = (row+1)*N
+                CC[row,tmpci1:tmpci12] = C[row,col,:]
+                CC[col,tmpci2:tmpci22] = C[row,col,:]
+                #CC[row,(col-1)*N+1:col*N] = C[row,col,:]
+                #CC[col,(row-1)*N+1:row*N] = C[row,col,:]
         A = AA
         B = BB
         C = CC
@@ -274,19 +287,20 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
     Ccmplx = C
     Dcmplx = D
     
-    if sum(sum(A-lin.diag(A))) == 0:
+    if sum(sum(A-A)) == 0:
         N = len(A)
-        cindex = np.zeros([1,N])
+        cindex = np.zeros([N,1])
         for m in range(0,N):
             if np.imag(A[m,m]) != 0:
-                if m == 1:
-                    cindex[m]
+                if m == 0:
+                    cindex[m] = 1
                 else:
                     if cindex[m-1] == 0 or cindex[m-1] == 2:
                         cindex[m] = 1
                         cindex[m+1] = 2
                     else:
-                        cindex[m] = 2
+                        cindex[m] = 2                    
+                        
         n = -1
         for m in range(0,N):
             n = n + 1
@@ -300,8 +314,8 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
                 b = B[n,:]
                 b1 = 2*np.real(b)
                 b2 = -2*np.imag(b)
-                Ablock = [[a1,a2],[-a2,a1]]
-                A[n:n+1,n:n+1] = Ablock
+                Ablock = np.vstack(([a1,a2],[-a2,a1]))
+                A[n:n+2,n:n+2] = Ablock
                 C[:,n] = c1
                 C[:,n+1] = c2
                 B[n,:] = b1
@@ -311,8 +325,13 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
     Nc = len(D)
     tell = -1
     E=np.zeros([Nc,Nc])
-    if sum(lin.eig(D) == 0) > 0:
-        Ahat = A/lin.eye(N)
+    tmp1 = lin.eig(D)[0]
+    tmp2 = tmp1 == 0
+    tmp3 = any(tmp2)
+    tmp4 = tmp3 != True
+    if 1:
+    #if any(lin.eig(D) == 0) > 0:
+        Ahat = np.linalg.solve(A,np.eye(N))
         Bhat = Ahat*B
         Chat = C*Ahat
         Dhat = D-C*Ahat*B
@@ -320,6 +339,11 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
         B = Bhat
         C = Chat
         D = Dhat
+    
+    tmp2 = B/D
+    tmp3 = tmp2*C
+    tmp4 = tmp3-A
+    tmp5 = A*tmp4
     
     S1 = A*(B*D**(-1)*C-A)
     

@@ -3,7 +3,7 @@ import numpy.linalg as lin
 from math import sqrt
 import fitcalcPRE, pr2ss
 
-class FRPopts():
+class FRPOpts:
     solver = 'QUADPROG'
     test = 'None'
     TOLGD = 1e-6

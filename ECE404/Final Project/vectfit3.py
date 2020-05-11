@@ -627,10 +627,10 @@ def vectfit3(f,s,poles,weight,opts):
     if opts.cmplx_ss != 1:
         A = lin.diag(lin.sparse(A))
         
-        cindex = np.zeros([1,N])
+        cindex = np.zeros([N,1])
         for m in range(0,N):
             if np.imag(A[m,m]) != 0:
-                if m == 1:
+                if m == 0:
                     cindex[m] = 1
                 else:
                     if cindex[m-1] == 0 or cindex[m-1] == 2:
