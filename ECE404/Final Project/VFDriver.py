@@ -70,7 +70,7 @@ def VFDriver(bigH, s, poles, opts):
                     piece2 = alf+1j*bet[n] #Complex conjugate
                     poles = np.append(poles,piece1)
                     poles = np.append(poles,piece2)
-                poles = poles.reshape(1,-1)
+                #poles = poles.reshape(1,-1)
             elif opts.poletype == 'logcmplx': #Complex, log spaced starting poles
                 bet = np.logspace(log10(s[0,0]/1j),log10(s[0,-1]/1j),int(floor(N/2)))
                 poles = np.zeros([1,N], dtype = 'complex128')
@@ -80,7 +80,7 @@ def VFDriver(bigH, s, poles, opts):
                     piece2 = alf+1j*bet[n] #Complex conjugate
                     poles = np.append(poles,piece1)
                     poles = np.append(poles,piece2)
-                poles = poles.reshape(1,-1)
+                #poles = poles.reshape(1,-1)
             else:
                 print('ERROR: Illegal value for opts.poletype')
                 print('Valid input: ''lincmplex'' and ''logcmplx''')
@@ -108,8 +108,7 @@ def VFDriver(bigH, s, poles, opts):
                     poles2 = np.append(poles2,piece1)
                     poles2 = np.append(poles2,piece2)
                 poles = np.append(poles1, poles2)
-                poles = poles.reshape(1,-1)
-                
+
             else:
                 print('ERROR: Illegal value for opts.poletype')
                 print('Valid input: ''lincmplex'' and ''logcmplx''')
@@ -117,14 +116,14 @@ def VFDriver(bigH, s, poles, opts):
                 print(opts.poletype)
                 return
         
-        if len(poles[0]) < N:
+        if len(poles) < N:
             if opts.poletype == 'lincmplx':
                 pole_extra = -(s[0,0]/1j+s[0,-1]/1j)/2
             elif opts.poletype == 'logcmplx' or opts.poletype == 'linlogcmplx':
                 pole_extra = -10**((log10(s[0,0]/1j)+log10(s[0,-1]/1j))/2)
             poles = np.append(poles, pole_extra)
         opts.poletype = oldpoletype
-    
+        poles = poles.reshape(1,-1)       
     
     Nc = len(bigH[:,0,0])
     Ns = len(s[0])

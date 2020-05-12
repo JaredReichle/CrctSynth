@@ -6,7 +6,9 @@ def fitcalcABCDE(sk,A,B,C,D,E):
     #N = len(A)
     #I = np.ones([N,1])
     
-    dum = mat.repmat(1/(sk-A),Nc,1)
+    dum1 = (sk-A)
+    dum2 = 1/dum1
+    dum = mat.repmat(dum2,Nc,1)
     C = C*dum
     
     tmp1 = np.matmul(C,B)

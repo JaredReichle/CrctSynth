@@ -3,16 +3,16 @@ from math import atan2, cos, sin, pi
 
 def rot(S):
     Nc = len(S)
-    SA = np.zeros(Nc)
+    SA = np.zeros([Nc,Nc], dtype = 'complex128')
     SB=SA
-    scale1 = np.zeros([1,Nc])
+    scale1 = np.zeros(Nc, dtype = 'complex128')
     scale2 = scale1
     scale = scale1
     err1 = scale1
     err2 = scale1
-    numerator = []
-    denominator = []
-    ang = []
+    numerator = np.zeros(Nc)
+    denominator = np.zeros(Nc)
+    ang = np.zeros(Nc)
     
     for col in range(0,Nc):
         numerator[col] = 0.0

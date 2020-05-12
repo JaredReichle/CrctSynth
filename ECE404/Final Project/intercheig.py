@@ -1,11 +1,11 @@
 import numpy as np
 
 def intercheig(V,oldV,D,Nc,fstep):
-    dot = []
-    ind = []
-    taken = []
-    hjelp = []
-    if fstep > 1:
+    dot = np.zeros(Nc)
+    ind = np.zeros(Nc)
+    taken = np.zeros(Nc)
+    hjelp = np.zeros(Nc)
+    if fstep > 0:
         UGH = abs(np.real(np.transpose(oldV)*V))
         for ii in range(0,Nc):
             ilargest = 0
@@ -30,7 +30,7 @@ def intercheig(V,oldV,D,Nc,fstep):
                     ind[j] = ihjelp
         
         for l in range(0,Nc):
-            ii = ind[l]
+            ii = int(ind[l])
             ilargest = 0
             rlargest = 0
             
@@ -47,9 +47,9 @@ def intercheig(V,oldV,D,Nc,fstep):
             V[:,ii] = V[:,ilargest]
             V[:,ilargest] = hjelp
             
-            hjelp = D[ii,ii]
-            D[ii,ii] = D[ilargest,ilargest]
-            D[ilargest,ilargest] = hjelp
+            hjelp = D[ii]
+            D[ii] = D[ilargest]
+            D[ilargest] = hjelp
             
             dum = UGH[:,ii]
             UGH[:,ii] = UGH[:,ilargest]
@@ -57,7 +57,7 @@ def intercheig(V,oldV,D,Nc,fstep):
             
         for ii in range(0,Nc):
             dotprod = np.transpose(oldV[:,ii])*V[:,j]
-            if np.sign(np.real(dotprod)) < 0:
+            if np.sign(np.real(dotprod[ii])) < 0:
                 V[:,ii] = -V[:,ii]
         
     return V, D

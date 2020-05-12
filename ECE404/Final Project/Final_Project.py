@@ -40,28 +40,13 @@ mat = scipy.io.loadmat('ex2_Y.mat')
 bigY = mat['bigY']
 s = mat['s']
 
-#class opts():
-#    N = 10
-#    nu = 1e-3
-#    poletype = 'linlogcmplx'
-#    weightparam = 1
-#    Niter1 = 7
-#    Niter2 = 4
-#    asymp = 2
-#    logx = 0
-#    remove_HFpoles = 0
-#    factor_HF = 1.1
-#    passive_DE = 0
-#    passive_DE_TOLD = 1e-6
-#    passive_DE_TOLE = 1e-16
-#    screen = 1
-
 #============================
 #   VECTOR FITTING
 #============================
 
 poles = []
-vfopts = DefVFOpts()
+vfopts = DefVFOpts() #Imported from VFDriver
+vfopts.N = 10
 
 [SER, rmserr, bigYfit, opts2] = VFDriver(bigY, s, poles, vfopts)
 
@@ -70,13 +55,10 @@ np.savez('data', R = SER.R, poles = SER.poles)
 #   PASSIVITY ENFORCEMENT
 #=============================
 
-rpopts = DefRPOpts()
-
-#opts.parametertype = 'Y'
-#opts.plot.s_pass = np.transpose(2*pi*1j*np.linspace(0,2E5,1001))
-#opts.plot.ylim = [-2e-3, 2e-3]
+rpopts = DefRPOpts() #Imported from RPDriver
 
 [SER, bigYfit_passive, opts3] = RPDriver(SER, s, rpopts)
+
 #=============================
 #   NETLIST GENERATION
 #=============================

@@ -47,7 +47,7 @@ def vectfit3(f,s,poles,weight,opts):
             poles[1] = -1-1j*10
     
     if (opts.relax != 0) and (opts.relax != 1):
-        print('ERROR in vectfit3: ==> Illegal value for opts.relax')
+        print('ERROR in vectfit3: ==> Illegal value for opts.relax')()
         return
     if (opts.asymp != 1) and (opts.asymp != 2) and (opts.asymp != 3):
         print('ERROR in vectfit3: ==> Illegal value for opts.asymp')

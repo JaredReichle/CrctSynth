@@ -14,7 +14,6 @@ def NetListGen(residues, poles, filename):
         NN = Np
     
     #Initializing P/R
-    
     pi = np.zeros(NN)
     pr = np.zeros(NN)
     ci = np.zeros([PORT,NN])

@@ -33,12 +33,13 @@ def violextremaY(SERflag,wintervals,A,B,C,D,colinterch):
         A = lin.diag(A)
         
     s = []
-    EE = []
+    EE = np.zeros([len(D),2*len(A)])
     Nc = len(D)
     g_pass = 1e16
     smin = 0
     for m in range(0,len(wintervals[:,0])):
-        Nint = 21
+        #Nint = 21
+        Nint = len(A)
         w1 = wintervals[m,0]
         if wintervals[m,1] == 1e16: #violation extends to inf freq
             w2 = 2*pi*1e16
@@ -49,22 +50,22 @@ def violextremaY(SERflag,wintervals,A,B,C,D,colinterch):
             s_pass2 = 1j*np.logspace(-8,np.log10(w2),Nint)
         else:
             s_pass2 = 1j*np.logspace(np.log10(w1),np.log10(w2),Nint)
-        s_pass = np.sort([s_pass1,s_pass2])
-        Nint = 2 * Nint
+        s_pass = np.sort(np.concatenate([s_pass1,s_pass2])) 
+        #Nint = 2 * Nint
         oldT0 = []
         for k in range(0,len(s_pass)):
             Ainput = np.diag(A)
-            Einput = np.zeros(Nc)
+            Einput = np.zeros([Nc,Nc])
             Y = fitcalcABCDE(s_pass[k],Ainput,B,C,D,Einput)
             G = np.real(Y)
             if colinterch == 0:
-                EE[:,k] = lin.eig(G)
+                EE[:,k] = lin.eig(G)[0]
             else:
-                [T0,DD] = lin.eig(G)
+                [DD,T0] = lin.eig(G)
                 T0 = rot(T0)
                 [T0,DD] = intercheig(T0,oldT0,DD,Nc,k)
                 oldT0 = T0
-                EE[:,k] = np.diag(DD)
+                EE[:,k] = DD.reshape(1,-1)
         
         #===================================================
         #   Indentifying violation, picking minima for s2
@@ -80,15 +81,24 @@ def violextremaY(SERflag,wintervals,A,B,C,D,colinterch):
                     if(EE[row,k] < EE[row,k-1]) and (EE[row,k]<EE[row,k+1]):
                         s_pass_ind[k] = 1
         
-        s = [s,s_pass[np.where(s_pass_ind == 1)]]
-        dum = min(EE)
-        [g_pass2, ind] = min(dum)
+        s_loc = np.where(s_pass_ind == 1)[0]
+        if len(s_loc) == 0:
+            s = s
+        else:
+            s = np.concatenate([s,s_pass[s_loc]])
+        dum = min(EE[:,0])
+        g_pass2 = dum
+        ind = np.argmin(EE[:,0])
+        #[g_pass2, ind] = min(dum)
         smin2 = s_pass[ind]
-        [g_pass, ind] = min([g_pass,g_pass2])
+        dumg = [g_pass,g_pass2]
+        g_pass = min(dumg)
+        ind = np.argmin(dumg)
+        #[g_pass, ind] = min([g_pass,g_pass2])
         dums = [smin,smin2]
         smin = dums[ind]
         
-        g_pass = min(g_pass,min(min(EE)))
+        g_pass = min(g_pass,min(EE[:,0]))
         
     s_pass = s
     
