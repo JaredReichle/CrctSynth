@@ -19,12 +19,12 @@ Credit also goes to the following papers:
     [3] Gustavsen, B. (2008). "Fast Passivity Enforcement for Pole-Residue
     Models by Perturbation of Residue Matrix Eigenvalues." Power Delivery,
     IEEE Transactions on 23(4): 2278-2285.
-"""
+a22F"""
 
 from math import pi
 import numpy as np
 import scipy.io
-#from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 
 from VFDriver import VFDriver, DefVFOpts
 from RPDriver import RPDriver, DefRPOpts
@@ -44,11 +44,11 @@ s = mat['s']
 
 poles = []
 vfopts = DefVFOpts() #Imported from VFDriver
-vfopts.N = 16
+vfopts.N = 15
 
 [SER, rmserr, bigYfit, opts2] = VFDriver(bigY, s, poles, vfopts)
 
-np.savez('data', R = SER.R, poles = SER.poles)
+#np.savez('data', R = SER.R, poles = SER.poles)
 #=============================
 #   PASSIVITY ENFORCEMENT
 #=============================
@@ -63,6 +63,8 @@ rpopts = DefRPOpts() #Imported from RPDriver
 
 filename = 'spice_net_list' #Do not add extension
 
+#np.savez('data', R = SER.R, poles = SER.poles)
+
 #Help with defining inputs to function
 NetListGen(SER.R, SER.poles, filename)
 
@@ -70,16 +72,37 @@ NetListGen(SER.R, SER.poles, filename)
 #   COMPARING ORIGINAL MODEL WITH PERTURBED MODEL
 #===================================================
 
-#plt.figure(1)
-#Nc = len(SER.D)
-#for row in range(0,Nc):
-#    for col in range(row,Nc):
-#        dum1 = np.squeeze(bigYfit[row,col,:])
-#        dum2 = np.squeeze(bigYfit_passive[row,col,:])
-#        h1 = plt.semilogy(s/(2*pi*1j),abs(dum1),'b')
-#        h2 = plt.semilogy(s/(2*pi*1j),abs(dum2),'r--')
-#        h3 = plt.semilogy(s/(2*pi*1j),abs(dum2-dum1),'g-')
-#
-#plt.xlabel('Frequency [Hz]')
-#plt.ylabel('Admittance [S]')
-#plt.legend()
+plt.figure(8)
+Nc = len(SER.D)
+s = np.transpose(s)
+for row in range(0,Nc):
+    for col in range(row,Nc):
+        dum0 = bigY[row,col,:]
+        #dum1 = bigYfit[row,col,:]
+        dum2 = bigYfit_passive[row,col,:]
+        h1 = plt.semilogy(s/(2*pi*1j),abs(dum0),'b')
+        h2 = plt.semilogy(s/(2*pi*1j),abs(dum2),'r--')
+        h3 = plt.semilogy(s/(2*pi*1j),abs(dum2-dum0),'g-')
+plt.xlabel('Frequency [Hz]')
+plt.ylabel('Admittance [S]')
+plt.title('Original vs fitted model')
+plt.legend((h1[0],h2[0],h3[0]),('Oringinal','Fitted','Difference'))
+plt.savefig('Orivfitmodel.png', dpi = 80)
+
+plt.figure(7)
+Nc = len(SER.D)
+#s = np.transpose(s)
+for row in range(0,Nc):
+    for col in range(row,Nc):
+        #dum0 = bigY[row,col,:]
+        dum1 = bigYfit[row,col,:]
+        dum2 = bigYfit_passive[row,col,:]
+        h1 = plt.semilogy(s/(2*pi*1j),abs(dum1),'b')
+        h2 = plt.semilogy(s/(2*pi*1j),abs(dum2),'r--')
+        h3 = plt.semilogy(s/(2*pi*1j),abs(dum2-dum1),'g-')
+plt.xlabel('Frequency [Hz]')
+plt.ylabel('Admittance [S]')
+plt.title('Fitted vs perturbated model')
+plt.legend((h1[0],h2[0],h3[0]),('Fitted','Perturbated','Difference'))
+plt.savefig('Fitvpermodel.png', dpi = 80)
+

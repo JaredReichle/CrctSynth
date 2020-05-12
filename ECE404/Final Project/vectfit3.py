@@ -86,7 +86,7 @@ def vectfit3(f,s,poles,weight,opts):
     LAMBD = np.diag(poles[0]) #NxN diagonal
     Ns = len(s)
     N = len(LAMBD)
-    Nc = len(f) #HEY LOOK <--- ITS THIS GUY AGAIN
+    Nc = len(f)
     B = np.ones([N,1])
     SERA = poles
     SERC = np.zeros([Nc,N])
@@ -349,17 +349,21 @@ def vectfit3(f,s,poles,weight,opts):
                     LAMBD[m+1,m+1] = LAMBD[m,m]
                     B[m] = 2
                     B[m+1] = 0
-                    koko = C[m]
+                    koko = C[m].copy()
                     C[m+1] = koko.imag
                     C[m] = koko.real
                     m = m + 1
         
-        tmp1 = np.transpose(C) #CHECKED
+        Ctest = C.astype('float64')
+        LAMBDtest = LAMBD.astype('float64')
+        Dtest = D.astype('float64')
+        
+        tmp1 = np.transpose(Ctest) #CHECKED
         tmp2 = B*tmp1      
-        tmp3 = tmp2/D[0]    
-        tmp4 = LAMBD - tmp3
-        ZER = LAMBD - (B*np.transpose(C))/D[0]
-        reig, reig2 = lin.eig(ZER)
+        tmp3 = np.divide(tmp2,Dtest[0])    
+        tmp4 = LAMBDtest - tmp3
+        #ZER = LAMBDtest - (B*np.transpose(Ctest))/Dtest[0]
+        reig, reig2 = lin.eig(tmp4)
         roetter = np.transpose(reig)
         unstables = np.real(roetter) > 0
         if opts.stable == 1:
@@ -427,8 +431,10 @@ def vectfit3(f,s,poles,weight,opts):
         
         Dk = np.zeros([Ns,N], dtype = 'complex128')
         for m in range(0,N):
-            if cindex[m] == 0:  #Real pole                
-                Dk[:,m] = 1/(s-LAMBD[m])
+            if cindex[m] == 0:  #Real pole  
+                tmp1 = 1/(s-LAMBD[m])
+                Dk[:,m] = tmp1[:,0]
+                #Dk[:,m] = 1/(s-LAMBD[m])
             elif cindex[m] == 1:    #Complex pole, first part
                 tmp1 = weight/(s-LAMBD[m])
                 tmp2 = weight/(s-np.conj(LAMBD[m]))
@@ -446,7 +452,9 @@ def vectfit3(f,s,poles,weight,opts):
             Dk = np.zeros([Ns,N], dtype = 'complex128')
             for m in range(0,N):
                 if cindex[m] == 0:  #Real pole
-                    Dk[:,m] = weight/(s-LAMBD[m])
+                    tmp1 = weight/(s-LAMBD[m])
+                    Dk[:,m] = tmp1[:,0]
+                    #Dk[:,m] = weight/(s-LAMBD[m])
                 elif cindex[m] == 1:    #Complex pole, first part
                     tmp1 = weight/(s-LAMBD[m])
                     tmp2 = weight/(s-np.conj(LAMBD[m]))

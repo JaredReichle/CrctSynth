@@ -292,9 +292,12 @@ def VFDriver(bigH, s, poles, opts):
     
     if opts.screen == 1:
         print('****Generating pole-residue model...')
-    [R,a] = ss2pr(SER.A,SER.B,SER.C)
-    SER.R = R
-    SER.poles = a
+    Apass = SER.A.copy()
+    Bpass = SER.B.copy()
+    Cpass = SER.C.copy()
+    [R,a] = ss2pr(Apass,Bpass,Cpass)
+    SER.R = R.copy()
+    SER.poles = a.copy()
     
     #rmserror of fitting:
     if len(fit3) != 0:

@@ -149,7 +149,11 @@ def RPDriver(SER, s, opts):
                 print(str(iter_out), '  ', str(iter_in), '  ')
             
             if iter_in == 0:
-                wintervals = pass_check_Y(SERflag, SER.A,SER.B,SER.C,SER.D,colinterch)
+                A = SER.A.copy()
+                B = SER.B.copy()
+                C = SER.C.copy()
+                D = SER.D.copy()
+                wintervals = pass_check_Y(SERflag,A,B,C,D,colinterch)
                 #[wintervals] = pass_check_Y(SERflag, SER.poles,[],SER1.R,SER1.D,colinterch)
                 
                 
@@ -238,7 +242,7 @@ def RPDriver(SER, s, opts):
             #Confusing. Check below
             if iter_in != Niter_in + 1:
                 wintervals = pass_check_Y(SERflag,SER1.poles,[],SER1.R,SER1.D)
-                [s_viol] = violextremaY(SERflag,np.transpose(wintervals),SER1.poles,[],SER1.R,SER1.D,colinterch)
+                s_viol = violextremaY(SERflag,np.transpose(wintervals),SER1.poles,[],SER1.R,SER1.D,colinterch)
                 
             #olds3 = s3
             s3 = [s3,s2,np.transpose(s_viol)]
@@ -282,6 +286,7 @@ def RPDriver(SER, s, opts):
             EE1[:,k] = D
         
         plt.figure(2)
+        plt.title('Previous verses perturbated eigenvalues')
         h1 = plt.plot(s_pass/(2*pi*1j),np.transpose(EE1), 'r--')
         if xlimflag == 1:
             plt.xlim(opts.xlim)
@@ -290,6 +295,7 @@ def RPDriver(SER, s, opts):
         if ylimflag == 1:
             plt.ylim(opts.ylim)
         plt.legend((h0[0],h1[0]),('Previous','Perturbated'))
+        plt.savefig('eigenvalues.png', dpi = 80)
     
     if len(wintervals) == 0:
         if outputlevel == 1:
@@ -307,8 +313,8 @@ def RPDriver(SER, s, opts):
         print('Increase parameter opts.Niter_out')
     
     #Producing plot
-    Ns = len(s)
-    bigYfit = np.zeros([Nc,Nc,Ns])
+    Ns = len(s[0])
+    bigYfit = np.zeros([Nc,Nc,Ns], dtype = 'complex128')
     for k in range(0,Ns):
         tmp1 = s_pass[k]*SER1.E
         tmp2 = np.diag(SER1.A)
@@ -363,6 +369,15 @@ def RPDriver(SER, s, opts):
     
     return SER1, bigYfit, opts
     
+
+##################################################################################
+
+
+
+
+##################################################################################
+
+
 def pass_check_Y(SERflag,A,B,C,D,colinterch):
     wintervals = []
     
@@ -481,9 +496,9 @@ def pass_check_Y(SERflag,A,B,C,D,colinterch):
     C = Ccmplx
     D = Dcmplx
     
-    viol = np.zeros(len(sing_w))
+    viol = np.zeros(len(sing_w), dtype = 'complex128')
     
-    midw = np.zeros([len(sing_w),1])
+    midw = np.zeros([len(sing_w),1], dtype = 'complex128')
     midw[0] = sing_w[0]/2
     midw[-1] = 2*sing_w[-1]
     for k in range(0,len(sing_w)-1):
