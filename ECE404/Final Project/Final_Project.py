@@ -22,8 +22,6 @@ Credit also goes to the following papers:
 """
 
 from math import pi
-#from pylab import zeros, vstack, concatenate, real, imag
-#from pylab import  outer, sort, ones, diag
 import numpy as np
 import scipy.io
 #from matplotlib import pyplot as plt
@@ -72,16 +70,16 @@ NetListGen(SER.R, SER.poles, filename)
 #   COMPARING ORIGINAL MODEL WITH PERTURBED MODEL
 #===================================================
 
-plt.figure(1)
-Nc = len(SER.D)
-for row in range(0,Nc):
-    for col in range(row,Nc):
-        dum1 = np.squeeze(bigYfit[row,col,:])
-        dum2 = np.squeeze(bigYfit_passive[row,col,:])
-        h1 = plt.semilogy(s/(2*pi*1j),abs(dum1),'b')
-        h2 = plt.semilogy(s/(2*pi*1j),abs(dum2),'r--')
-        h3 = plt.semilogy(s/(2*pi*1j),abs(dum2-dum1),'g-')
-
-plt.xlabel('Frequency [Hz]')
-plt.ylabel('Admittance [S]')
-plt.legend()
+#plt.figure(1)
+#Nc = len(SER.D)
+#for row in range(0,Nc):
+#    for col in range(row,Nc):
+#        dum1 = np.squeeze(bigYfit[row,col,:])
+#        dum2 = np.squeeze(bigYfit_passive[row,col,:])
+#        h1 = plt.semilogy(s/(2*pi*1j),abs(dum1),'b')
+#        h2 = plt.semilogy(s/(2*pi*1j),abs(dum2),'r--')
+#        h3 = plt.semilogy(s/(2*pi*1j),abs(dum2-dum1),'g-')
+#
+#plt.xlabel('Frequency [Hz]')
+#plt.ylabel('Admittance [S]')
+#plt.legend()

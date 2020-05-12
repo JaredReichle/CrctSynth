@@ -15,41 +15,43 @@ class FRPOpts:
     auxflag = 1
     
 
-def FRPY(SER,s,s2,s3,RPopts):
-    auxflag = RPopts.auxflag
-    weightfactor = RPopts.weightfactor
-    weightparam = RPopts.weightparam
-    bigweight = RPopts.weight
-    TOLE = RPopts.TOLE
-    TOL = RPopts.TOLGD
+def FRPY(SER,s,s2,s3,opts):
+    auxflag = opts.auxflag
+    weightfactor = opts.weightfactor
+    weightparam = opts.weightparam
+    bigweight = opts.weight
+    TOLE = opts.TOLE
+    TOL = opts.TOLGD
     
     SERA = SER.poles
-    [m,n] = np.size(SERA)
+    [m,n] = SERA.reshape(-1,1).shape
     if m < n:
         SERA = np.transpose(SERA)
     SERC = SER.R
     SERD = SER.D
     SERE = SER.E
     
-    RPopts.H = []
-    RPopts.oldDflag = -1
-    RPopts.oldEflag = -1
+    opts.H = []
+    opts.oldDflag = -1
+    opts.oldEflag = -1
     
-    d = lin.eig(SERD)
-    eigD = d
-    if any(d < 0):
+    #d = lin.eig(SERD)
+    #eigD = d
+    [eigD,VD] = lin.eig(SERD)
+    if any(eigD < 0):
         Dflag = 1
-        [VD,eigD] = lin.eig(SERD)
+        #[VD,eigD] = lin.eig(SERD)
         invVD = VD**(-1)
         eigD = lin.diag(eigD)
     else:
         Dflag = 0
         
-    e = lin.eig(SERE)
-    eigE = e
-    if any(e < 0):
+    #e = lin.eig(SERE)
+    #eigE = e
+    [eigE, VE] = lin.eig(SERE)
+    if any(eigE < 0):
         Eflag = 1
-        [VE,eigE] = lin.eig(SERE)
+        #[VE,eigE] = lin.eig(SERE)
         invVE = VE**(-1)
         eigE = lin.diag(eigE)
     else:
@@ -63,22 +65,23 @@ def FRPY(SER,s,s2,s3,RPopts):
     
     bigB = []
     bigC = []
+    s = np.transpose(s)
     Ns = len(s)
     Ns2 = len(s2)
     Nc = len(SERD)
     Nc2 = Nc*Nc
     #I = lin.eye(Nc)
-    Mmat = []
+    #Mmat = []
     
     #=============================================
     #   Finding out which poles are complex
     #=============================================
     
     #LS Problem
-    cindex = np.zeros([1,N])
+    cindex = np.zeros([N,1])
     for m in range(0,N):
         if np.imag(SERA[m]) != 0:
-            if m == 1:
+            if m == 0:
                 cindex[m] = 1
             else:
                 if cindex[m-1] == 0 or cindex[m-1] == 2:
@@ -91,16 +94,16 @@ def FRPY(SER,s,s2,s3,RPopts):
     #   LOOP FOR LEAST SQUARES PROBLEM
     #======================================
     
-    bigV = np.zeros([Nc,Nc])
-    bigD = np.zeros([Nc,Nc])
-    biginvV = np.zeros([Nc,Nc])
+    bigV = np.zeros([Nc,N*Nc], dtype = 'complex128')
+    bigD = np.zeros([Nc,N], dtype = 'complex128')
+    biginvV = np.zeros([Nc,N*Nc], dtype = 'complex128')
     
     if(Dflag+Eflag) == 2:
-        bigA = np.zeros([Ns*Nc2,Nc*(N+2)])
+        bigA = np.zeros([Ns*Nc2,Nc*(N+2)], dtype = 'complex128')
     elif (Dflag+Eflag) == 1:
-        bigA = np.zeros([Ns*Nc2,Nc*(N+1)])
+        bigA = np.zeros([Ns*Nc2,Nc*(N+1)], dtype = 'complex128')
     else:
-        bigA = np.zeros([Ns*Nc2,Nc*(N)])
+        bigA = np.zeros([Ns*Nc2,Nc*(N)], dtype = 'complex128')
         
     for m in range(0,N):
         R = (SERC[:,:,m])
@@ -112,9 +115,9 @@ def FRPY(SER,s,s2,s3,RPopts):
             R = np.imag(R)
             
         [V,D] = lin.eig(R)
-        bigV[0:Nc,(m-1)*Nc+1:m*Nc] = V
-        biginvV[0:Nc,(m-1)*Nc+1:m*Nc] = V**(-1)
-        bigD[:,m] = lin.diag(D)
+        bigV[0:Nc,m*Nc:(m+1)*Nc] = V
+        biginvV[0:Nc,m*Nc:(m+1)*Nc] = V**(-1)
+        bigD[:,m] = np.diag(D)
         
     for k in range(0,Ns):
         sk = s[k]
@@ -140,9 +143,12 @@ def FRPY(SER,s,s2,s3,RPopts):
         else:
             weight = bigweight[:,:,k]
         
+        Mmat = np.zeros([Nc*Nc,(Nc*N)], dtype = 'complex128')
+        
         for m in range(0,N):
-            V = np.squeeze(bigV[:,(m-1)*Nc+1:m*Nc])
-            invV = V**-1
+            #V = bigV[:,m*Nc:(m+1)*Nc]
+            V = np.squeeze(bigV[:,m*Nc:(m+1)*Nc])
+            invV = V**(-1)
             if cindex[m] == 0:  #real pole
                 dum = 1/(sk-SERA[m])
             elif cindex[m] == 1:    #complex pole, 1st part
@@ -152,7 +158,7 @@ def FRPY(SER,s,s2,s3,RPopts):
             
             for egenverdi in range(0,Nc):
                 tell = -1
-                gamm = V[:,egenverdi]*invV[egenverdi,:]
+                gamm = V[:,egenverdi].reshape(-1,1)*invV[egenverdi,:].reshape(1,-1)
                 for row in range(0,Nc):
                     for col in range(0,Nc):
                         faktor = weight[row,col]
@@ -164,11 +170,11 @@ def FRPY(SER,s,s2,s3,RPopts):
                         else:
                             Mmat[tell,offs+egenverdi] = gamm[row,col]*faktor*dum
             
-            offs = offs +Nc
+            offs = offs + Nc
         
         if Dflag == 1:
             for egenverdi in range(0,Nc):
-                gamm = VD[:,egenverdi]*invVD[egenverdi,:]
+                gamm = VD[:,egenverdi].reshape(-1,1)*invVD[egenverdi,:].reshape(1,-1)
                 tell = -1
                 for row in range(0,Nc):
                     for col in range(0,Nc):
@@ -178,7 +184,7 @@ def FRPY(SER,s,s2,s3,RPopts):
         
         if Eflag == 1:
             for egenverdi in range(0,Nc):
-                gamm = VE[:,egenverdi]*invVE[egenverdi,:]
+                gamm = VE[:,egenverdi].reshape(-1,1)*invVE[egenverdi,:].reshape(1,-1)
                 tell = -1
                 for row in range(0,Nc):
                     for col in range(0,Nc):
@@ -186,30 +192,30 @@ def FRPY(SER,s,s2,s3,RPopts):
                         faktor = weight[row,col]
                         Mmat[tell,offs+Nc*Dflag+egenverdi] = gamm[row,col]*sk*faktor
         
-        bigA[(k-1)*Nc2+1:k*Nc2,:] = Mmat
+        bigA[k*Nc2:(k+1)*Nc2,:] = Mmat
         
-    #==========================================================
-    #   INTRODUCING SMAPLES OUTSIDE LS REGION: ONE SAMPLE PER POLE
-    #==========================================================
+    #==============================================================
+    #   INTRODUCING SAMPLES OUTSIDE LS REGION: ONE SAMPLE PER POLE
+    #==============================================================
     
     if auxflag == 1:
-        s4 = []
+        s4 = np.zeros(len(SERA))
         tell = -1
         for m in range(0,len(SERA)):
             if cindex[m] == 0:
-                if((abs(SERA[m])>s[Ns]/1j)) or (abs(SERA[m]) < s[0]/1j):
+                if((abs(SERA[m])>s[Ns-1]/1j)) or (abs(SERA[m]) < s[0]/1j):
                     tell = tell + 1
                     s4[tell] = 1j*abs(SERA[m])
             elif cindex[m] == 1:    #complex pole
-                if((abs(np.imag(SERA[m])))>s[Ns]/1j) or (abs(np.imag(SERA[m]))<s[0]/1j):
+                if((abs(np.imag(SERA[m])))>s[Ns-1]/1j) or (abs(np.imag(SERA[m]))<s[0]/1j):
                     tell = tell + 1
                     s4[tell] = 1j*abs(np.imag(SERA[m]))
     
         Ns4 = len(s4)
         
-        bigA2 = np.zeros([Ns4*Nc2,Nc*(N+Dflag+Eflag)])
+        bigA2 = np.zeros([Ns4*Nc2,Nc*(N+Dflag+Eflag)], dtype = 'complex128')
         
-        for k in range(0,0,Ns4):
+        for k in range(0,Ns4):
             sk = s4[k]
             #Calc matrix Mmat
             tell = -1
@@ -231,7 +237,7 @@ def FRPY(SER,s,s2,s3,RPopts):
             weight = weight*weightfactor
             
             for m in range(0,N):
-                V = np.squeeze(bigV[:,(m-1)*Nc+1:m*Nc])
+                V = np.squeeze(bigV[:,m*Nc:(m+1)*Nc])
                 invV = V**(-1)
                 if cindex[m] == 0:  #Real pole
                     dum = 1/(sk-SERA[m])
@@ -242,7 +248,7 @@ def FRPY(SER,s,s2,s3,RPopts):
                 
                 for egenverdi in range(0,Nc):
                     tell = -1
-                    gamm = V[:,egenverdi]*invV[egenverdi,:]
+                    gamm = V[:,egenverdi].reshape(-1,1)*invV[egenverdi,:].reshape(1,-11)
                     for row in range(0,Nc):
                         for col in range(0,Nc):
                             faktor = weight[row,col]
@@ -258,7 +264,7 @@ def FRPY(SER,s,s2,s3,RPopts):
                 
                 if Dflag == 1:
                     for egenverdi in range(0,Nc):
-                        gamm = VD[:,egenverdi]*invVD[egenverdi,:]
+                        gamm = VD[:,egenverdi].reshape(-1,1)*invVD[egenverdi,:].reshape(1,-1)
                         tell = -1
                         for row in range(0,Nc):
                             for col in range(0,Nc):
@@ -268,7 +274,7 @@ def FRPY(SER,s,s2,s3,RPopts):
                                 
                 if Eflag == 1:
                     for egenverdi in range(0,Nc):
-                        gamm = VE[:,egenverdi]*invVE[egenverdi,:]
+                        gamm = VE[:,egenverdi].reshape(-1,1)*invVE[egenverdi,:].reshape(1,-11)
                         tell = -1
                         for row in range(0,Nc):
                             for col in range(0,Nc):
@@ -276,28 +282,30 @@ def FRPY(SER,s,s2,s3,RPopts):
                                 faktor = weight[row,col]
                                 Mmat[tell, offs+Nc*Dflag+egenverdi] = gamm[row,col]*sk*faktor
                 
-                bigA2[(k-1)*Nc2+1:k*Nc2,:] = Mmat
-            bigA = [bigA,bigA2]
+                bigA2[k*Nc2:(k+1)*Nc2,:] = Mmat
+            bigA = np.concatenate([bigA,bigA2])
     
-    Escale = np.zeros(Nc)    
-    bigA = [np.real(bigA),np.imag(bigA)]
+  
+    bigA = np.concatenate([np.real(bigA),np.imag(bigA)])
     Acol = len(bigA[0,:])
+    Escale = np.zeros(Acol)  
     for col in range(0,Acol):
         Escale[col] = lin.norm(bigA[:,col],2)
         bigA[:,col] = bigA[:,col]/Escale[col]
-    H = np.transpose(bigA)*bigA
-    RPopts.H = H
-    RPopts.Escale = Escale
-    RPopts.bigV = bigV
-    RPopts.biginvV = biginvV
-    if RPopts.outputlevel == 1:
+    bigAdum = np.transpose(bigA)
+    H = np.matmul(bigAdum,bigA) #np.transpose(bigA)*bigA
+    opts.H = H
+    opts.Escale = Escale
+    opts.bigV = bigV
+    opts.biginvV = biginvV
+    if opts.outputlevel == 1:
         print('Done')
     else:
-        bigV = RPopts.bigV
-        biginvV = RPopts.biginvV
-        if Dflag != RPopts.oldDflag or Eflag != RPopts.oldEflag:
-            RPopts.H = RPopts.H[0:Nc*(N+Dflag+Eflag),0:Nc*(N+Dflag+Eflag)]
-            RPopts.Escale = RPopts.Escale[0:Nc*(N+Dflag+Eflag)]
+        bigV = opts.bigV
+        biginvV = opts.biginvV
+        if Dflag != opts.oldDflag or Eflag != opts.oldEflag:
+            opts.H = opts.H[0:Nc*(N+Dflag+Eflag),0:Nc*(N+Dflag+Eflag)]
+            opts.Escale = opts.Escale[0:Nc*(N+Dflag+Eflag)]
     
     Mmat2 = np.zeros([Nc2,Nc*(N+Dflag+Eflag)])
     viol_G = []
@@ -460,21 +468,21 @@ def FRPY(SER,s,s2,s3,RPopts):
     #C = bigC
     
     bigB = [np.real(bigB)]
-    for col in range(0,len(RPopts.H)):
+    for col in range(0,len(opts.H)):
         if len(bigB) > 0:
-            bigB[:,col] = bigB[:,col]/RPopts.Escale[col]
+            bigB[:,col] = bigB[:,col]/opts.Escale[col]
     
-    ff = np.zeros([len(RPopts.H),1])
+    ff = np.zeros([len(opts.H),1])
     
     
     #FIND ROUTINE FOR THE BELOW
-    if RPopts.solver == 'QUADPROG':
-        [dx,lambd] = quadprog_solve_qp(RPopts.H,ff,-bigB,bigC)
-    elif RPopts.solver == 'CPLEX':
+    if opts.solver == 'QUADPROG':
+        [dx,lambd] = quadprog_solve_qp(opts.H,ff,-bigB,bigC)
+    elif opts.solver == 'CPLEX':
         print('ERROR: Python does not support CPLEX solver')
         return
     
-    dx = dx/np.transpose(RPopts.Escale)
+    dx = dx/np.transpose(opts.Escale)
     
     for m in range(0,N):
         if cindex[m] == 0:
@@ -512,10 +520,10 @@ def FRPY(SER,s,s2,s3,RPopts):
     SER.E = SEREnew
     [SER] = pr2ss(SER)
     
-    RPopts.oldDflag = Dflag
-    RPopts.oldEflag = Eflag
+    opts.oldDflag = Dflag
+    opts.oldEflag = Eflag
     
-    return SER, RPopts
+    return SER, opts
 
 def quadprog_solve_qp(P, q, G=None, h=None, A=None, b=None):
     qp_G = .5 * (P + P.T)   # make sure P is symmetric

@@ -138,21 +138,21 @@ def RPDriver(SER, s, opts):
                     else:
                         print('Max violation, eig(G) : None')
                     
-                    if min(lin.eig(SER0.D)) < 0:
-                        print('Max violation, eig(G) : ', str(min(lin.eig(SER1.D))))
+                    if min(lin.eig(SER0.D)[0]) < 0:
+                        print('Max violation, eig(G) : ', str(min(lin.eig(SER1.D)[0])))
                     else:
                         print('Max violation, eig(G) : None')
                     
-                    if min (lin.eig(SER0.E)) < 0:
-                        print('Max violation, eig(G) : ', str(min(lin.eig(SER1.E))))
+                    if min(lin.eig(SER0.E)[0]) < 0:
+                        print('Max violation, eig(G) : ', str(min(lin.eig(SER1.E)[0])))
                     else:
                         print('Max violation, eig(G) ; None')
                 if outputlevel != 1:
                     min1 = g_pass
-                    min2 = min(lin.eig(SER1.D))
+                    min2 = min(lin.eig(SER1.D)[0])
                     print('Max violation : ', str(min([min1,min2])))
-                    if min(lin.eig(SER0.E)) < 0:
-                        print('Max violation, E : ',str(min(lin.eig(SER1.E))))
+                    if min(lin.eig(SER0.E)[0]) < 0:
+                        print('Max violation, E : ',str(min(lin.eig(SER1.E)[0])))
                     
             
             if outputlevel == 1:
@@ -161,7 +161,7 @@ def RPDriver(SER, s, opts):
                 #[SER1, MPopts] = FMP(SER0,s,s2,s3,MPopts)
                 #No such FMP routine
             if opts.method == 'FRP': #Can't find FMP routine
-                [SER1, MPopts] = FRPY(SER0,s,s2,s3,MPopts)
+                [SER1, frpopts] = FRPY(SER0,s,s2,s3,frpopts)
             else:
                 print('****** ERROR #1 in RPDriver.py')
             
