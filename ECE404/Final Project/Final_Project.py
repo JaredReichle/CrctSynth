@@ -44,7 +44,7 @@ s = mat['s']
 
 poles = []
 vfopts = DefVFOpts() #Imported from VFDriver
-vfopts.N = 10
+vfopts.N = 16
 
 [SER, rmserr, bigYfit, opts2] = VFDriver(bigY, s, poles, vfopts)
 

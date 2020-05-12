@@ -2,6 +2,7 @@ import numpy as np
 import numpy.linalg as lin
 from math import pi
 import scipy.linalg
+from matplotlib import pyplot as plt
 
 
 #from pr2ss import pr2ss
@@ -25,7 +26,7 @@ class DefRPOpts():
     outputlevel = 1
     weight = []
     s_pass = np.transpose(2*pi*1j*np.linspace(0,2E5,1001))
-    ylim = [-2e-3, 2e-3]
+    ylim = [-2e-1, 2e-1]
     plot = True
 
 
@@ -75,11 +76,54 @@ def RPDriver(SER, s, opts):
     Niter_in = opts.Niter_in
     
     #============================================
-    #   Plotting eigenvalues of orinigal model
+    #   Plotting eigenvalues of original model
     #============================================
     
-    #Check lines 195-236 - Revisit
-    
+    if plotte == 1:
+        EE0 = np.zeros([len(SER.D),len(s_pass)], dtype = 'complex128')        
+        oldT0 = []
+        #oldU = []
+        for k in range(0,len(s_pass)):
+            tmp1 = s_pass[k]*SER.E
+            tmp2 = np.diag(SER.A)
+            tmp3 = s_pass[k]*np.eye(len(SER.A))
+            tmp4 = np.diag(tmp3-tmp2)
+            tmp5 = tmp4**(-1)
+            tmp6 = SER.C*tmp5
+            tmp7 = np.matmul(tmp6,SER.B)
+            tmp8 = tmp7+SER.D+tmp1
+            Y = tmp8
+            #Y = SER.C*np.diag((s_pass[k]*np.eye(len(SER.A)) - np.diag(SER.A))**(-1))*SER.B+SER.D+s_pass[k]*SER.E
+            G = np.real(Y)
+            [D,T0] = lin.eig(G)
+            T0 = rot(T0)
+            [T0,D] = intercheig(T0,oldT0,D,Nc,k)
+            oldT0 = T0
+            EE0[:,k] = D
+        
+        plt.figure(2)
+        h0 = plt.plot(s_pass/(2*pi*1j),np.transpose(EE0),'b')
+        if xlimflag == 1:
+            plt.xlim(opts.xlim)
+        else:
+            plt.xlim([s_pass[0]/(2*pi*1j), s_pass[-1]/(2*pi*1j)])
+        if ylimflag == 1:
+            plt.ylim(opts.ylim)
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('Eigenvalues of G_s')
+        
+#        plt.figure(3)
+#        h2 = plt.plot(s_pass/(2*pi*1j),np.transpose(EE0),'b')
+#        if xlimflag == 1:
+#            plt.xlim(opts.xlim)
+#        else:
+#            plt.xlim([s_pass[0]/(2*pi*1j), s_pass[-1]/(2*pi*1j)])
+#        if ylimflag == 1:
+#            plt.ylim(opts.ylim)
+#        plt.xlabel('Frequency [Hz]')   
+        #plt.title('Monitoring enforcement process (eig(G(s)))')
+        
+        
     outputlevel = opts.outputlevel
     
     #============================================
@@ -113,16 +157,16 @@ def RPDriver(SER, s, opts):
                     if outputlevel == 1:
                         print('N.o. violating intervals: ', str(len(wintervals[0,:])))
                 
-#                if len(wintervals) == 0 and all(lin.eig(SER1.D)[0] >= 0) and all(lin.eig(SER1.E)[0] >= 0):
-#                    SER0 = SER1
-#                    break_outer = 1
-#                    break
+                if len(wintervals) == 0 and all(lin.eig(SER1.D)[0] >= 0) and all(lin.eig(SER1.E)[0] >= 0):
+                    SER0 = SER1
+                    break_outer = 1
+                    break
                 
-                test_wintervals = np.array([[1e3,1e5],[1e4,1e6]])
+#                test_wintervals = np.array([[1e3,1e5],[1e4,1e6]])
                 
-                wintervalinput = np.transpose(test_wintervals)
+#                wintervals = np.transpose(test_wintervals)
                 
-                [s_viol,g_pass,ss] = violextremaY(0,wintervalinput,SER.A,SER.B,SER.C,SER.D,colinterch) #SERflag = 0
+                [s_viol,g_pass,ss] = violextremaY(0,wintervals,SER.A,SER.B,SER.C,SER.D,colinterch) #SERflag = 0
 
                 #[s_viol,g_pass,ss] = violextremaY(SERflag,np.transpose(test_wintervals),SER.poles,[],SER1.R, SER1.D,colinterch)
                 
@@ -165,14 +209,35 @@ def RPDriver(SER, s, opts):
             else:
                 print('****** ERROR #1 in RPDriver.py')
             
+            EE1 = np.zeros([len(SER1.D),2*len(SER1.A)])
+            
             if plotte == 1:
-                
+                oldT0 = []
+                #tell = -1
+                for k in range(0,len(s_pass)):
+                    Y = SER1.C*np.diag((s_pass[k]*np.eye(len(SER1.A)) - np.diag(SER1.A))**(-1))*SER1.B+SER1.D+s_pass[k]*SER1.E
+                    G = np.real(Y)
+                    [D,T0] = lin.eig(G)
+                    T0 = rot(T0)
+                    [T0,D] = intercheig(T0,oldT0,D,Nc,k)
+                    EE1[:,k] = np.diag(D)
+            
+            plt.figure(2)
+            h2 = plt.plot(s_pass/(2*pi*1j),np.tranpose(EE0), 'b--')
+            h3 = plt.plot(s_pass/(2*pi*1j),np.tranpose(EE1), 'r--')
+            if xlimflag == 1:
+                plt.xlim([opts.xlim])
+            else:
+                plt.xlim([s_pass[0]/(2*pi*1j), s_pass[-1]/(2*pi*1j)])
+            if ylimflag == 1:
+                plt.ylim([opts.ylim])
+            plt.legend((h2[0],h3[0]),('Previous','Perturbated'))
                 
                 
             #end plotte
             #Confusing. Check below
             if iter_in != Niter_in + 1:
-                [wintervals] = pass_check_Y(SERflag,SER1.poles,[],SER1.R,SER1.D)
+                wintervals = pass_check_Y(SERflag,SER1.poles,[],SER1.R,SER1.D)
                 [s_viol] = violextremaY(SERflag,np.transpose(wintervals),SER1.poles,[],SER1.R,SER1.D,colinterch)
                 
             #olds3 = s3
@@ -194,23 +259,39 @@ def RPDriver(SER, s, opts):
 
     s_pass = opts.s_pass
 
-    EE1 = []
+    EE1 = np.zeros([len(SER.D),len(s_pass)], dtype = 'complex128')
     if plotte == 1:
         oldT0 = []
         #tell = -1
         for k in range(0,len(s_pass)):
-            #TAKE A LOOK AT THE BELOW
-            Y = SER1.C*np.diag((s_pass[k]*np.eye - np.diag(SER1.A))**(-1))*SER1.B+SER1.D+s_pass[k]*SER1.E
+            tmp1 = s_pass[k]*SER1.E
+            tmp2 = np.diag(SER1.A)
+            tmp3 = s_pass[k]*np.eye(len(SER1.A))
+            tmp4 = np.diag(tmp3-tmp2)
+            tmp5 = tmp4**(-1)
+            tmp6 = SER1.C*tmp5
+            tmp7 = np.matmul(tmp6,SER1.B)
+            tmp8 = tmp7+SER1.D+tmp1
+            Y = tmp8
+            #Y = SER1.C*np.diag((s_pass[k]*np.eye - np.diag(SER1.A))**(-1))*SER1.B+SER1.D+s_pass[k]*SER1.E
             G = np.real(Y)
-        [T0,D] = lin.eig(G)
-        T0 = rot(T0)    #Find routine - minimizing phase angle of eigenvectors
-        [T0,D] = intercheig(T0, oldT0, D, Nc, k) #Find routine
-        oldT0 = T0
-        EE1[:,k] = lin.diag(D)
+            [D,T0] = lin.eig(G)
+            T0 = rot(T0)    #Find routine - minimizing phase angle of eigenvectors
+            [T0,D] = intercheig(T0, oldT0, D, Nc, k) #Find routine
+            oldT0 = T0
+            EE1[:,k] = D
         
-        #Plotting items
+        plt.figure(2)
+        h1 = plt.plot(s_pass/(2*pi*1j),np.transpose(EE1), 'r--')
+        if xlimflag == 1:
+            plt.xlim(opts.xlim)
+        else:
+            plt.xlim([s_pass[0]/(2*pi*1j), s_pass[-1]/(2*pi*1j)])
+        if ylimflag == 1:
+            plt.ylim(opts.ylim)
+        plt.legend((h0[0],h1[0]),('Previous','Perturbated'))
     
-    if wintervals.size == 0:
+    if len(wintervals) == 0:
         if outputlevel == 1:
             print('   ')
         print('---> Passivity was successfully enforced')
@@ -228,9 +309,17 @@ def RPDriver(SER, s, opts):
     #Producing plot
     Ns = len(s)
     bigYfit = np.zeros([Nc,Nc,Ns])
-    I = sci.sparse(np.ones([len(SER.A[:,0]),1]))
     for k in range(0,Ns):
-        Y = SER1.C*lin.diag((s_pass[k]*I - lin.diag(SER1.A))**(-1))*SER1.B+SER1.D+s_pass[k]*SER1.E
+        tmp1 = s_pass[k]*SER1.E
+        tmp2 = np.diag(SER1.A)
+        tmp3 = s_pass[k]*np.eye(len(SER1.A))
+        tmp4 = np.diag(tmp3-tmp2)
+        tmp5 = tmp4**(-1)
+        tmp6 = SER1.C*tmp5
+        tmp7 = np.matmul(tmp6,SER1.B)
+        tmp8 = tmp7+SER1.D+tmp1
+        Y = tmp8
+        #Y = SER1.C*lin.diag((s_pass[k]*I - lin.diag(SER1.A))**(-1))*SER1.B+SER1.D+s_pass[k]*SER1.E
         bigYfit[:,:,k] = Y
     
     #553
