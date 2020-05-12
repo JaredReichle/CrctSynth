@@ -307,7 +307,7 @@ def FRPY(SER,s,s2,s3,opts):
             opts.H = opts.H[0:Nc*(N+Dflag+Eflag),0:Nc*(N+Dflag+Eflag)]
             opts.Escale = opts.Escale[0:Nc*(N+Dflag+Eflag)]
     
-    Mmat2 = np.zeros([Nc2,Nc*(N+Dflag+Eflag)])
+    Mmat2 = np.zeros([Nc2,Nc*(N+Dflag+Eflag)], dtype = 'complex128')
     viol_G = []
     viol_D = []
     viol_E = []
@@ -315,10 +315,12 @@ def FRPY(SER,s,s2,s3,opts):
     #=============================================
     #   LOOP FOR CONSTRAINT PROBLEM, TYPE #1
     #=============================================
-    Y = np.zeros([Nc, Ns2])
+    Y = np.zeros([Nc, Ns2], dtype = 'complex128')
     EE = []
     Q = []
     for k in range(0,Ns2):
+        if (len(s2)-1) == 0:    #Hard coded - out of loop if no violating intervals
+            break
         sk = s2[k]
         for row in range(0,Nc):
             for col in range(0,Nc):
@@ -387,6 +389,8 @@ def FRPY(SER,s,s2,s3,opts):
     #===============================
     Ns3 = len(s3)
     for k in range(0,Ns3):
+        if (Ns3-1) == 0:
+            break
         sk = s3[k]
         for row in range(0,Nc):
             for col in range(0,Nc):
@@ -463,7 +467,7 @@ def FRPY(SER,s,s2,s3,opts):
             bigC = [bigC,eigE[n]-TOLE]
             viol_E = [viol_E, eigE[n]]
     if len(bigB) == 0:
-        return      #No passivity violations
+        return SER, opts     #No passivity violations
     
     #C = bigC
     

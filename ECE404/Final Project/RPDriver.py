@@ -167,8 +167,7 @@ def RPDriver(SER, s, opts):
             
             if plotte == 1:
                 
-                plotte = 1
-                #PLOTTING FUNCTIONS
+                
                 
             #end plotte
             #Confusing. Check below
